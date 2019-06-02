@@ -1,0 +1,1158 @@
+<apex:page controller="synety.AgentOverview" showheader="false">
+    
+    <script src="/support/api/29.0/interaction.js"></script>
+       <link rel="stylesheet" href="/resource/synety__dialerStyles/css/normalize.min.css?v119" /> 
+    <script>window.jQuery || document.write('<script src="/resource/synety__dialerStyles/js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+    <link rel="stylesheet" href="/resource/synety__dialerStyles/css/main.css?v119" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" />
+    
+    <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
+    
+    
+    <!-- Jquery DataTable Plugin Files 
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.6/js/jquery.dataTables.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.6/css/jquery.dataTables.css" />
+    -->
+    
+    <!-- Jquery DataTable Plugin Files -->
+    <script src="/resource/synety__JqueryDataTable/JS/jquery-1.11.1.min.js"></script>
+    <script src="/resource/synety__JqueryDataTable/JS/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="/resource/synety__JqueryDataTable/CSS/jquery.dataTables.css" /> 
+    
+    <script src="https://malsup.github.io/jquery.blockUI.js"></script>
+    
+    <script type="text/javascript">
+        var apiPlatform = '{!apiPlatform}';
+        var namespacePrefix = "{!if($Organization.Id=='00DG0000000Ce3tMAC','','synety.')}";//"synety.";
+        var sessionId = '{!sessionId}';  
+        var ConformClose = false;
+        var InTransferProgress = false;
+        var IdentityBit = 0;
+        
+         setInterval(function(){
+		 try{
+		 	localStorage.setItem("isInTransfer_"+sessionId, JSON.stringify(true));
+            if(JSON.parse(localStorage.getItem("IsSelected"+sessionId)) && IdentityBit == 0)
+            {
+            	localStorage.setItem("Record_"+sessionId,'Transfer'); 
+	            localStorage.setItem("RecordValue_"+sessionId, JSON.stringify(true));
+				localStorage.setItem("IsSelected"+sessionId, JSON.stringify(false));
+				IdentityBit = 1;
+            }
+            
+		 } catch(e){}
+		}, 300);
+		
+        $(document).ready(function(){
+            
+            LoadAgents();
+            
+            $('#example').dataTable( {
+                "paging":   false,
+                "ordering": true,
+                "info":     false
+            } );
+    
+        });
+        
+        function transferCall(transferTarget)
+        {
+            //var sessionId = '{!sessionId}';  
+            var AgentCLI = '{!AgentCLI}';
+            var transferorId = '{!TransferorId}'; //Shumaila Transfer call
+            
+            var jsonParam = '{"SessionId":"'+sessionId+'","TransferorID":"'+transferorId+'"';
+                jsonParam += ',"TransferTarget":"'+transferTarget+'","doCancel":"false"';                   
+                jsonParam += ',"AccountNumber":"'+AgentCLI+'"}';                    
+			
+			localStorage.setItem("InTransferProgress_"+sessionId, JSON.stringify(true));
+			
+            synety.AgentOverview.transferCall(jsonParam,
+                transferCallCallBack, 
+                {escape: false}
+            );
+            
+            $.blockUI({
+               message: $('#divCallTransfer'),
+               centerY: true,
+               //overlayCSS: { backgroundColor: '#DFE2E8' },
+               css: {
+                   width: '150px',
+                   height: '100px',
+                   left: ($(window).width() - 150) / 2 + 'px',
+                   top: (($(window).height() < 300) ? ($(window).height() - 75) / 2 : 30)  + 'px',
+               }
+           });
+            
+        }
+        
+        function transferCallCallBack(result, event)
+        {                
+            if (event.status) 	
+            {
+            	//Shumaila CRM Sync v2 JIRA Issue SFC-94
+            	localStorage.setItem("WasTransfered_"+sessionId, JSON.stringify(true));	            	
+                //window.opener.WasTransfered = true;
+                //debugLog(response.result);
+            }
+            else 
+            {
+                debugLog('error on transferCallCallBack:'+event.message);
+            }
+        }
+        
+        function addToTransfer()
+        {
+            var NumberToTransfer = document.getElementById('callNum').value;
+            
+            if (document.getElementById('callNum').value.trim().length >2)
+                transferCall(NumberToTransfer);
+            else
+                alert('Minimum 3-digits extension is allowed');
+        }
+        
+        function cancelTransfer()
+        {
+            //var sessionId = '{!sessionId}'; 
+                      
+            ConformClose = true; 
+            localStorage.setItem("InTransferProgress_"+sessionId, JSON.stringify(false));
+            var AgentCLI = '{!AgentCLI}';
+            var transferorId = '{!TransferorId}'; //Shumaila Transfer call       
+           
+                
+            var jsonParam = '{"SessionId":"'+sessionId+'","TransferorID":"0"';
+            jsonParam += ',"TransferTarget":"","doCancel":"true"}';
+        
+       		/*
+			localStorage.setItem("Record_"+sessionId,'Transfer');
+			localStorage.setItem("RecordValue_"+sessionId, JSON.stringify(true));
+			//*****************************
+		
+			localStorage.setItem("IsSelected"+sessionId, JSON.stringify("true"));
+			*/
+			
+            synety.AgentOverview.transferCall(jsonParam,
+                        transferCallCallBack,  
+                        {escape: false}
+                    );
+           
+           //window.opener.isInTransfer = false;
+            //localStorage.setItem("isInTransfer_"+sessionId, JSON.stringify(false));
+            
+            $.unblockUI();                  
+        }
+        
+         $(function() {
+         
+         	$( window ).bind('keypress', function(e){
+				   if ( e.keyCode == 13 ) {
+				     addToTransfer();
+				   }
+				 });  
+				 
+            $('html').click(function() {
+                $(".floatingKeypad").slideUp(100);
+                $(".options").slideDown(100);
+            });
+            $(".options li").bind("click", function(event) {
+                
+                var newvalue = $(this).html(); // this is value you can send to API
+                $(this).parent().prev().html(newvalue); 
+                event.stopPropagation();
+                $(".options").slideUp(100);
+            });
+            $(".value").bind("click", function(event) {
+                $(this).next().slideToggle(100);
+                event.stopPropagation();
+            });
+            $(".keypad").click(function(event){
+                event.stopPropagation();
+            });
+            $(".keypad li").click(function(event){
+                event.stopPropagation();
+                var number = $(this).html();
+                var callnumber = $('#callNum').val();
+                $('#callNum').val(callnumber + number);
+                $('#callNum').focus();
+            });
+            $("#clear").click(function(event) {
+                event.stopPropagation();
+                $('#callNum').val("");
+                $('#callNum').focus();
+            });
+            $("#backspace").click(function(event) {
+                event.stopPropagation();
+                var value = $("#callNum").val();
+                value = value.substr(0, value.length-1);
+                $("#callNum").val(value);
+                $('#callNum').focus();
+            });
+            $(".showkeys").click(function(event) {
+                    $(".floatingKeypad").slideToggle();
+                    event.stopPropagation();
+                });
+            $("body").on("click", ".scrollarea .remove", function() {
+                    $(this).parent().parent().slideUp(function() {
+                        $(this).remove();
+                    });
+                });
+                $("body").on("click", ".head .remove", function(e) {
+                    e.stopPropagation();
+                    $(".activeCall .entry").remove();
+                });
+        });
+		
+		function isNumberKey(evt)
+        {
+          var charCode = (evt.which) ? evt.which : event.keyCode;
+          
+          
+          if(charCode == 35 || charCode == 42)
+          	return true;
+          	
+          if (charCode > 31 
+            	&& (charCode < 48 || charCode > 57)
+             )
+             return false;
+			
+			var callnumber = $('#callNum').val();
+			//Yasir CRM Sync v2 JIRA Issue SFC-59
+			//if(callnumber.length > 13) 
+			if(callnumber.length > 19)
+				return false;
+				
+          return true;
+        }
+		  
+		function setLocalStorage()
+		{
+			localStorage.setItem("isInTransfer_"+sessionId, JSON.stringify(false));
+            
+            localStorage.setItem("Record_"+sessionId,'Transfer'); 
+            localStorage.setItem("RecordValue_"+sessionId, JSON.stringify(false));
+			localStorage.setItem("IsSelected"+sessionId, JSON.stringify(false));
+			localStorage.setItem("SelectedCount_"+sessionId,'')
+			IdentityBit = 0;
+		}
+		window.onbeforeunload = function() 
+	    {
+	    	if(JSON.parse(localStorage.getItem("InTransferProgress_"+sessionId)))
+	    	{
+	    		setLocalStorage();
+				return 'Are you sure to close transfer screen';
+	    	}
+	    	else //if(!ConformClose)
+	    	{
+	    		setLocalStorage();
+	    		ConformClose = false;			
+	    	} 
+	    	//else
+	    	//{
+	    		//ConformClose = false;
+	    	//}
+	    			    	
+	    };
+
+
+        function LoadAgents()
+        {
+            var AgentList = '{!AgentsOverviewJson}';
+            var AgentsRows =  JSON.parse(AgentList);
+            var AgentCli = '{!AgentCLI}';
+            var RowData = '';
+            var Name = '';
+            var DeptJson = '{!departmentJSON}';
+            var agentDepartments = JSON.parse(DeptJson);
+            
+            for (var i = 0; i < AgentsRows.length; i++)
+            {
+            	if(AgentsRows[i].AvailableNumber != AgentCli)
+                {
+	                Name = AgentsRows[i].DisplayName == null ? "" : AgentsRows[i].DisplayName;
+	                Name = Name.replace(/ /g,'');
+	                
+	                
+	                //first show the display name and if it is null then show first + last name
+	                if(Name != "" )
+	                    Name = AgentsRows[i].DisplayName  ;  
+	                else
+	                {
+	                	//Name = AgentsRows[i].Firstname + ' ' + AgentsRows[i].Surname ;
+	                	  AgentsRows[i].Firstname = AgentsRows[i].Firstname == null ? " " : AgentsRows[i].Firstname ; 
+	                	  AgentsRows[i].Surname = AgentsRows[i].Surname == null ? " " : AgentsRows[i].Surname ;
+	                	  Name = AgentsRows[i].Firstname + ' ' + AgentsRows[i].Surname ;
+	                }
+	                    
+	                
+	                RowData = '<tr> <td style="font-size: 12px;" id=name_' + AgentsRows[i].i_account+'>' +  Name + '</td>';
+	                RowData = RowData +  '<td style="font-size: 12px;" id=number_' + AgentsRows[i].i_account+'>' +  AgentsRows[i].AvailableNumber + '</td>';
+	                RowData = RowData +  '<td style="font-size: 12px;" id=status_' + AgentsRows[i].i_account+'>' +  AgentsRows[i].StatusID + '</td>';
+
+					
+					RowData = RowData + '<td style="font-size: 12px;" id=department_' + AgentsRows[i].i_account+'> </td>';
+					
+	                //RowData = RowData + '<td> Department </td>'; 
+	                
+	                
+	                
+	                if(AgentsRows[i].StatusID == 'Online')
+	                	RowData = RowData +  '<td style="font-size: 12px;" align="center"><input id=transferbtn_' + AgentsRows[i].i_account+' class="Enablebtn"  type="Button" value="Transfer" onclick="transferCall('+AgentsRows[i].AccountNumber+')" /></td></tr>';
+	                else
+	                	RowData = RowData +  '<td style="font-size: 12px;" align="center"><input id=transferbtn_' + AgentsRows[i].i_account+' class="Disablebtn"  type="Button" disabled value="Transfer" onclick="transferCall('+AgentsRows[i].AccountNumber+')" /></td></tr>';
+	                
+	                
+	                
+	                $("#AgentsOverviewResult").append(RowData);
+	                
+	                var Htmlstatustd = '';
+	                var DepName = '';
+	                for (var key in agentDepartments)
+					{
+						if(agentDepartments[key].Account == AgentsRows[i].i_account)
+						{
+							Htmlstatustd = 'department_' + agentDepartments[key].Account;
+							Htmlstatustd = document.getElementById(Htmlstatustd);
+							Htmlstatustd.innerHTML = agentDepartments[key].Name.replace(/:::/g, ", ");
+							//RowData = RowData + '<td>' + agentDepartments[key].Name + '</td>';
+							//RowData = RowData + '<td>' + agentDepartments[key].Name.replace(/:::/g, ", ") + '</td>';
+						}
+					}
+                }
+            }
+        }
+
+        
+        function removeSpecialChars(recName)
+		{
+			var NameNFunction = recName;
+			if(recName.length > 0)
+			{
+				if(recName.indexOf('\'') > -1 )
+					recName = recName.replace(/'/g, "&#92;&#39;");
+				 if(recName.indexOf('\"') > -1 )
+					recName = recName.replace(/"/g, "&quot;");
+				 if(recName.indexOf('<') > -1)
+					recName = recName.replace(/</g, "&#60;");
+				 if(recName.indexOf('>') > -1)
+					recName = recName.replace(/>/g, "&#62;");
+				 if(recName.indexOf('\\') > -1)
+					recName = recName.replace(/\\/g, "&bsol;&bsol;");
+				 if(recName.indexOf(' ') > -1)
+					recName = recName.replace(/ /g, "&nbsp;");
+			
+				return recName;
+			}	
+			else
+				return '';
+		}
+        
+    </script>  
+    
+    <script src="/support/api/29.0/interaction.js"></script>
+    <script src="/resource/synety__agentSignalR3/jquery.signalR-1.0.1.js" type="text/javascript"></script>
+    <script src="https://notifications.{!apiPlatform}.cloudcall.com/signalr/hubs" type="text/javascript"></script>
+    
+    
+    <script type="text/javascript">
+    <!-- Implement signalR functionality -->
+        var platform = '{!apiPlatform}';
+        var SynetyConfigDetails = '{!SynetyConfigDetails}';
+        var notificationHub = '';
+        var signalRUrl = "https://notifications."+platform+".cloudcall.com/";
+        
+        function initSignalR() 
+        {
+            $.connection.hub.url = signalRUrl+'signalr';
+            $.connection.hub.logging = true;
+            notificationHub = $.connection.notificationHub;
+            console.log('notificationHub : '+ notificationHub);  
+            $.connection.hub.start({transport: ['webSockets', 'serverSentEvents', 'foreverFrame', 'longPolling']})
+            .done(function () {
+                getAccountCallBack();
+            })
+            .fail(function () {                     
+                });
+                
+           //notification event raise when the status for any call is changed
+            
+            notificationHub.client.callStatus = function (callStatus) {
+
+                console.log('callStatus Called: ' + callStatus);
+                var callStatusObj = JSON.parse(callStatus);
+            
+            	if ((callStatusObj.Status === "TransferSucceeded" 
+					 || callStatusObj.Status === "TransferFailed"
+					 || callStatusObj.Status.indexOf('Idle leg') >=0
+					 )
+				   && 
+				     ( callStatusObj.AccountNumber.toString() === configRecord.Username.toString())
+				   && (sessionId === callStatusObj.SessionID.toString())
+				   )
+				{
+					if( (callStatusObj.Status === "TransferSucceeded" 
+					 	|| callStatusObj.Status === "TransferFailed" 
+					 	//|| callStatusObj.Status.indexOf('Idle leg') >=0
+					 	) )
+					{
+					   if(!ConformClose)
+					   {
+						   	ConformClose = true ;
+						   	$.unblockUI();
+							localStorage.setItem("isInTransfer_"+sessionId, JSON.stringify(false));
+							//JIRA Issue SFC-161
+							localStorage.setItem("Record_"+sessionId,'Transfer');
+							
+							localStorage.setItem("IsSelected"+sessionId, JSON.stringify(false));	//JIRA Issue SFC-161
+							localStorage.setItem("RecordValue_"+sessionId, JSON.stringify(false));
+							
+							localStorage.setItem("InTransferProgress_"+sessionId, JSON.stringify(false));
+							//InTransferProgress = false;
+							window.close();
+					   }
+					   else
+					   	ConformClose = false;						
+					}
+				}
+            }
+           notificationHub.client.inboundCallStatus = function (callStatus) {
+
+		       console.log('inboundCallStatus Called: ' + callStatus);
+			 	var callStatusObj = JSON.parse(callStatus);
+				if((callStatusObj.Status == "Idle recipient" 
+						|| callStatusObj.Status == 'Session Idle'
+						|| callStatusObj.Status == 'Idle Leg 2' || callStatusObj.Status == 'Idle leg 2' 
+						|| callStatusObj.Status == 'Idle Leg 1' || callStatusObj.Status == 'Idle leg 1')
+						&& callStatusObj.AccountNumber.toString() === configRecord.Username.toString())
+				{
+					if(sessionId === callStatusObj.SessionID.toString())
+					{
+						localStorage.setItem("InTransferProgress_"+sessionId, JSON.stringify(false));		
+					}
+				}
+		   };
+            
+            notificationHub.client.inboundCampaignCall = function (callStatus) {
+            
+            console.log('inboundCampaignCall Called: ' + callStatus);
+            var icc_callStatusObj = JSON.parse(callStatus);
+            
+            if((icc_callStatusObj.Status === "TRANSFER_FAILED"
+              ||icc_callStatusObj.Status === "CALL_COMPLETE"
+            )
+		    && icc_callStatusObj.i_account.toString() === configRecord.AccountId.toString()
+		    && icc_callStatusObj.SessionID.toString() === sessionId)
+		    {
+		    	if(!ConformClose)
+			    {
+			    	ConformClose = true ;
+					$.unblockUI();
+					localStorage.setItem("Record_"+sessionId,'Transfer');
+					localStorage.setItem("RecordValue_"+sessionId, JSON.stringify(false));
+					
+					localStorage.setItem("IsSelected"+sessionId, JSON.stringify(false));	//JIRA Issue SFC-161
+					
+					localStorage.setItem("isInTransfer_"+sessionId, JSON.stringify(false));
+					localStorage.setItem("InTransferProgress_"+sessionId, JSON.stringify(false));
+					window.close();
+		    	}
+		    	else
+				   	ConformClose = false;
+		    }
+            
+            }
+            
+            notificationHub.client.presence = function (presence) {
+
+                console.log('presence Called: ' + presence);
+                presenceObj = JSON.parse(presence);
+                UpdateStatus(presenceObj);
+            }
+            
+            
+
+        }
+        
+        function getAccountCallBack() 
+        {
+            console.log("getAccountCallBack");
+            try
+            {
+                var sReturn = SynetyConfigDetails;
+                console.log('sReturn:'+sReturn);
+                if(sReturn == '')
+                {
+                    console.log('You do not have an active synety configuration record setup. Please contact your system administrator.');
+                    return;
+                }
+                
+                var myObject = JSON.parse(sReturn);
+                configRecord = myObject;
+                CLDAccount = configRecord.Username;
+                registerConnection(configRecord.Username);
+            }
+            catch(ex)
+            {
+                console.log('Cannot access apex function from here. Exception:'+ex);
+                return;
+            }   
+                
+        }   
+        
+        function registerConnection(accountNumber) 
+        {
+            console.log('registering connection for '+accountNumber);
+            console.log('configRecord.OverrideAutoLogout='+configRecord.OverrideAutoLogout);
+            
+            if(configRecord.OverrideAutoLogout == 'Yes' || configRecord.OverrideAutoLogout == 'null' 
+               || configRecord.OverrideAutoLogout == '')
+            {
+                notificationHub.server.registerConnection($.connection.hub.id, accountNumber, configRecord.NotificationKey, 
+                                                      configRecord.LicenseKey, true, ["presence"]);
+            }
+            else
+            {
+                notificationHub.server.registerConnection($.connection.hub.id, accountNumber, configRecord.NotificationKey, 
+                                                      configRecord.LicenseKey, false, ["presence"]);
+            }
+            console.log('connection registered for '+accountNumber);
+        
+        }
+        
+        function UpdateStatus(presenceObj)
+        {
+            
+            var StatusElement = '';
+            var NumberElement = '';
+            var NameElement = '';
+            var TransferElement = '';
+            var StatusCode = '';
+            var Engaged = '';
+            var Transferbtn = '';
+            if(presenceObj != null)
+            {
+                //change Status 
+            
+                StatusElement = presenceObj.i_account.toString();
+                if(StatusElement!= null)
+                    StatusElement = 'status_'+StatusElement;
+                
+                StatusCode = presenceObj.StatusID.toString();
+                Engaged = presenceObj.Engaged.toString();
+                
+                if(StatusCode == '6')
+                    StatusCode = 'In Wrap Up';
+                else if(StatusCode == '13')
+                    StatusCode = 'Online'; 
+                else if(StatusCode == '17')
+                    StatusCode = 'Offline';
+                else if(StatusCode == '25')
+                    StatusCode = 'Busy';
+                
+                
+                /*
+                	Yasir 4-27-2015 disable transfer button when Engaged is true  
+                	Get the transfer button here and disable it 
+                */	
+                	TransferElement = presenceObj.i_account.toString();
+                	if(TransferElement!= null)
+                    	TransferElement = 'transferbtn_'+TransferElement;
+                	
+                	Transferbtn = document.getElementById(TransferElement);
+                
+                    
+                var Htmlstatustd = document.getElementById(StatusElement);
+                if(Htmlstatustd != null)
+                {
+                    /*
+                    if(Engaged == 'true')
+                        Htmlstatustd.innerHTML = StatusCode + ' (on call)';
+                    else
+                        Htmlstatustd.innerHTML = StatusCode ;
+                   */
+                   
+                   if(StatusCode == 'Online')
+                   {
+                    	Transferbtn.disabled = false;
+                        Transferbtn.className = "Enablebtn";
+                     	
+                     	if(Engaged == 'true')
+	                   {     
+	                        Htmlstatustd.innerHTML = StatusCode + ' (on call)';
+	                        Transferbtn.disabled = true;
+	                        Transferbtn.className = "Disablebtn";
+	                   }     
+	                    else
+	                    	Htmlstatustd.innerHTML = StatusCode ;
+                   }
+                   else
+                   {
+                    	Transferbtn.disabled = true;
+                        Transferbtn.className = "Disablebtn";
+                        
+                        if(Engaged == 'true')
+	                   {     
+	                        Htmlstatustd.innerHTML = StatusCode + ' (on call)';
+	                        Transferbtn.disabled = true;
+	                        Transferbtn.className = "Disablebtn";
+	                   }     
+	                    else
+	                    	Htmlstatustd.innerHTML = StatusCode ;
+                   }
+                   /*
+                   if(Engaged == 'true')
+                   {     
+                        Htmlstatustd.innerHTML = StatusCode + ' (on call)';
+                        Transferbtn.disabled = true;
+                        Transferbtn.className = "Disablebtn";
+                   }     
+                    else
+                    {
+                    	Htmlstatustd.innerHTML = StatusCode ;
+                    	Transferbtn.disabled = false;
+                        Transferbtn.className = "Enablebtn";
+                    }
+                    */    
+                }   
+                
+                
+                //change Number 
+                
+                NumberElement = presenceObj.i_account.toString();
+                if(NumberElement != null)
+                    NumberElement = 'number_'+NumberElement;
+                    
+                var Htmlnumbertd =  document.getElementById(NumberElement);
+                
+                if(Htmlnumbertd != null && presenceObj.AvailableNumber.toString() != "" )
+                    Htmlnumbertd.innerHTML = presenceObj.AvailableNumber.toString() ;
+                
+                //change Name
+                NameElement = presenceObj.i_account.toString();
+                if(NameElement != null)
+                    NameElement = 'name_'+NameElement;
+                    
+                var Htmlnametd =    document.getElementById(NameElement);
+                
+                //if(Htmlnametd != null && presenceObj.DisplayName.toString() != "" )
+                if(Htmlnametd != null && presenceObj.DisplayName != null )
+                {
+                	//var AccountDisplayName = removeSpecialChars(presenceObj.DisplayName.toString());
+                    //Htmlnametd.innerHTML = AccountDisplayName;
+                    //special character case handling
+                    Htmlnametd.innerHTML = presenceObj.DisplayName.toString() ;
+                }
+            }
+        }
+        
+         initSignalR();       
+    <!-- Implement signalR functionality -->
+    </script> 
+    <!--
+    <script src="/resource/synety__agentSignalR3/jquery-1.9.0.js" type="text/javascript"></script>
+    <script src="/resource/synety__agentSignalR3/jquery.signalR-1.0.1.js" type="text/javascript"></script>
+    <script src="/resource/synety__agentSignalR3/signalr_functions.js?v98" type="text/javascript"></script>
+    
+    
+    <script src="/resource/synety__jqueryCookie?v98"></script> 
+    <script src="https://{!if(apiPlatform=='staging', 'staging-notifications.cloudcallcontact.com', 'notifications.'+apiPlatform+'.cloudcall.com')}/signalr/hubs" type="text/javascript"></script>
+    !-->
+
+    <style>
+         .clear 
+         {
+            clear: both;
+         }
+         #info_pop_box { 
+            display: none; 
+            position: fixed; 
+            bottom: 25px; 
+            right: 10px; 
+            padding: 15px; 
+            z-index: 99999; 
+            font-size: 10px; 
+          }
+         .info_pop_yellow { 
+            background: lightyellow; 
+          }
+         .info_pop_red { 
+            background: lightpink; 
+          }
+          
+            ::-webkit-scrollbar {
+                width: 12px;
+            }
+            ::-webkit-scrollbar-track {
+                background-color: #eaeaea;
+                border-left: 1px solid #ccc;
+            }
+            ::-webkit-scrollbar-thumb {
+                background-color: #ccc;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background-color: #aaa;
+            }
+            
+            
+            .cf:before,
+            .cf:after, .entry:before, entry:after {
+                content: " "; /* 1 */
+                display: table; /* 2 */
+            }
+            /*Add*/
+            .cf:after, entry:after {
+                clear: both;
+            }
+
+             .cf, entry {
+                *zoom: 1;
+            }
+            /*Add*/
+            .section input {
+                width: 66%;
+                float: left;
+                height: 28px;
+                box-sizing: border-box;
+                -moz-box-sizing: border-box;
+                -webkit-box-sizing: border-box;
+            }
+            /*Add*/
+            .section h1 {
+                margin-bottom: 5px;
+            }
+            
+            
+            /*Add*/
+            .section.activeCall div.head {
+                margin-bottom: 9px;
+                padding-bottom: 0px;
+            }
+            /*Add*/
+            .section.add div.head {
+                box-shadow: 0px 0px 0px 0px rgba(172, 164, 164, 0.3);
+                position: relative;
+                margin-bottom: 0px;
+                padding-bottom: 20px;
+            }
+                        
+            /*Add*/
+            .section div.number {
+                padding: 4px 5px;
+                width: 64%;
+            }
+            /*Add*/
+            .section div.number input {
+                font-size: 14px;
+                height: auto;
+                width: 78%;
+            }      
+            
+            /*Add*/
+            .floatingKeypad ul.keypad {
+                width: 100%;
+                float: none;
+                margin: 5px;
+            }
+            
+            /*Add*/
+            .section {
+                background-color: #f8f8f8;
+                font-size: 14px;
+                margin: 10px;
+                border-radius: 8px;
+                
+                border: 1px solid #dedede;
+                max-width: 900px;
+                min-width: 440px;
+            }
+            /*Add*/
+            .section .red {background-color: #d45164;}
+            /*Add*/
+            .section .red:hover {background-color: #dd576a;}
+            
+            /*Add*/
+            .section div.head {
+                border-width: 0px;
+                background-color: #ebebeb;
+                font-size: 18px;
+                padding: 20px 10px 10px;
+                border-radius: 6px 6px 0 0;
+                box-shadow: 0px 8px 0px 0px rgba(231, 231, 231, 0.71);
+                margin-bottom: 3px;
+                position: relative;
+            }
+            
+            /*Add*/
+            .section.search div.head {
+                position: relative;
+                z-index: auto;
+            }
+            
+            /*Add*/
+            .btns {
+                float: right;
+                background-color: #5c5c5c;
+                color: white;
+                margin: 0px 0px 0px 1%;
+                padding: 5px 2px;
+                font-size: 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                width: 15%;
+                text-align: center;
+                box-sizing:border-box;
+            }
+            
+            /*Add*/
+            .btn:hover {
+                background-color: #656565;
+            }
+            
+            /*Add*/
+            input.btns  { /*verify from mohsin bhai change from (input.btn) -> (input.btns) */
+                width:31%;
+                float: right;
+                box-sizing:border-box;
+            }
+            
+            /*Add*/
+            .entry {
+                padding: 10px 10px;
+                overflow: hidden;
+                border-bottom: 1px solid #ececec;
+            }
+            
+            /*Add*/
+            .entry:hover {
+                background-color: #ededed;
+            }
+            
+            /*Add*/
+            .entry:last-child {
+                border-bottom: none;
+            }
+            
+            /*Add*/
+            .actions li {
+                float: left;
+                background-color: #5c5c5c;
+                color: white;
+                margin: 0px 2px;
+                padding: 2px 10px;
+                font-size: 11px;
+                border-radius: 4px;
+                cursor: pointer;
+                list-style: none;
+            }
+            
+            /*Add*/
+            .actions li.on, .actions li.on:hover {
+                background-color: #868585; 
+                border: 2px solid #5c5c5c;
+                padding: 0px 8px;
+            }
+            
+            /*Add*/
+            .head #pause.on {
+                background-color: #868585; 
+                border: 2px solid #5c5c5c;
+                padding: 3px 0px;
+            }
+            
+            /*Add*/
+            .head #pause {
+                width: 7%;
+            }
+            
+            /*Add*/
+            .actions {
+                float: right;
+                padding: 0px;
+                margin: 0px;
+            }
+            
+            /*Add*/
+            .head .actions {
+                margin-top: 8px;
+            }
+            
+            /*Add*/
+            .entry .details {
+                float: left;
+            }
+            
+            /*Add*/
+            .phoneNumber {
+                color: #9c9c9c;
+            }
+            
+            /*Add*/
+            div.phoneNumber {
+                float: left;
+            }
+            
+            /*Add*/
+            .activeCall {
+                border-color: #1797c0;
+            }
+            
+            /*Yasir Transfer Fonts*/
+            .fontStyles
+            {
+            	font-size:13px ; 
+            	margin:0px ; 
+            	font-weight:bold; 
+            	font-family : sans-serif;
+            } 
+            /*Add*/
+            /*max-height: 175px; - for scroll bar just 3 items  visible in scroll bar active section */
+            .scrollarea {
+                max-height: 135px;  
+                overflow-y: scroll;
+            }
+            
+            /*Add*/
+            .search .scrollarea {
+                max-height: 199px;  
+            }
+            
+            /*Add*/
+            .type {
+                color: #9c9c9c;
+                font-style: italic;
+                font-size: 10px;
+            }
+            
+            /*Add*/
+            .telephones {
+                float: none;
+                padding: 0px;
+                margin: 0;
+                list-style: none;
+                display: block;
+                clear: both;
+            }
+            
+            /*Add*/
+            .telephones li {
+                float: left; 
+                margin-right: 5px;
+                margin: 5px 5px 5px 0;
+                background-color: #1797c0;
+                border-radius: 5px;
+                padding: 2px 5px;
+                color: #ededed;
+                font-size: 12px;
+                width: 100px;
+            }
+            
+            /*Add*/
+            .telephones li:hover {
+                background-color: #29a1c7;
+            }
+            
+            /*Add*/
+            .telephones li a {
+                color: white; text-decoration: none;
+            }
+            
+            /*Add*/
+            a {
+                color: #015ba7;
+            }
+            
+            /*Add*/
+            .btns.add { /*verify from mohsin bhai - change (.btn.add -> .btns.add ) */
+                background-color: #1797c0;
+            }
+            
+            /*Add*/
+            .btn.add:hover {
+                background-color: #29a1c7;
+            }
+            
+            /*Add*/
+            .company {
+                color: #9c9c9c;
+            }
+            
+            /*Add*/
+            .floatingKeypad {
+                width: 100px;
+                background-color: white;
+                position: absolute;
+                border-radius: 5px;
+                border: 1px solid #bababa;
+                z-index: 999;
+                right: 16%;
+                /*bottom: 50px;*/
+                bottom: -120px;
+                box-shadow: 0px -2px 3px 1px rgba(172, 164, 164, 0.5);
+                display: none;
+            }
+            
+            /*Add*/
+            .container {
+                margin: 0px auto;
+                max-width: 900px;
+            }
+            
+            /*Add*/
+            .status {
+                font-size: 10px;
+                float: left;
+                margin-right: 10px;
+                clear: both;
+            }
+            
+            /*Add*/
+            .status.red {
+                background-color: transparent;
+                color: #d45164;
+            }
+            
+            /*Add*/
+            .status.red:hover {
+                background-color: transparent;
+            }
+            
+            /*Add*/
+            .green {
+                color: #6ac23e;
+            }
+            
+            /*Add*/
+            .orange { 
+                color: #ffa700;
+            }
+            
+            /*Add*/
+            #endcall {
+                width: 23%;
+            }
+            
+            /*Add*/
+            .search .entry {
+                
+            }
+            
+            .Enablebtn
+            {
+            	background-color: #1797c0; 
+            	color: white; 
+            	width:120px;
+            }
+            
+            .Disablebtn
+            {
+            	background-color: #dbdbdb; 
+            	color: white; 
+            	width:120px;
+            }
+            
+            
+            /*Add*/
+            div.name {
+                float: left;
+                margin-right: 10px;
+            }
+            
+            /*Add*/
+            .caller {
+                clear: both;
+                font-size: 12px;
+                border-top: 1px solid lightgray;
+                margin-top: 1em;
+                margin-bottom: 0px;
+            }
+            
+            /*Add*/
+            @media only screen and (min-width: 520px) {
+                div.status {
+                    clear: none;
+                    float: right;
+                }
+            }
+            
+            /*Add*/
+            @media only screen and (min-width: 620px) {
+                .telephones {
+                    width: 40%;
+                    float: right;
+                    clear: none;
+                }
+                .telephones li {
+                    float: right;
+                }
+            
+            }
+            
+            /*Add*/
+            @media only screen and (min-width: 740px) {
+                .telephones {
+                    width: auto;
+                }
+
+    </style>
+    
+     <apex:pageBlock >
+        <apex:form >
+            <apex:messages />
+            <div class="add section  cf">
+            <div class="head cf">
+                
+                <div class="number" >
+                    <input type="text" name="number" id="callNum" value="" onkeypress="return isNumberKey(event)" />
+                    <div id="clear" title="clear number" >X</div>
+                    <div id="backspace"  title="delete last digit">&larr;</div>
+                </div>
+                
+                <div  class="btns add" onClick="addToTransfer();" title="add number to conference call">Transfer</div>
+                <div class="btns showkeys">Keypad</div>
+                
+                <div class="floatingKeypad">
+                    <ul class="keypad">
+                        <li >1</li>
+                        <li >2</li>
+                        <li >3</li>
+                        <li >4</li>
+                        <li >5</li>
+                        <li >6</li>
+                        <li >7</li>
+                        <li >8</li>
+                        <li >9</li>
+                        <li >*</li>
+                        <li >0</li>
+                        <li >#</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <table id="example" class="display" cellspacing="0" width="100%" >
+            <thead>
+                <tr>
+                    <th class="fontStyles" >Agent Name</th>
+                    <th class="fontStyles">Available Number</th>
+                    <th class="fontStyles">Status</th>
+                    <th class="fontStyles">Department</th>
+                    <th class="fontStyles">Transfer Call</th>
+                </tr>
+            </thead>
+            
+            <tbody id="AgentsOverviewResult">
+                
+            </tbody>
+        </table>
+
+            <div id="divCallTransfer" style="display:none; cursor: default; width: 150px"> 
+            Transferring call.<br />Please wait....<br /> 
+            <input style="width:120px" type="button" id="cancelTransfer" value="Cancel Transfer" onClick="cancelTransfer();return false;" /><br />
+            <span style="font-size:12px">Please hangup to complete the transfer</span>
+        </div>       
+        </apex:form> 
+     </apex:pageBlock>   
+</apex:page>

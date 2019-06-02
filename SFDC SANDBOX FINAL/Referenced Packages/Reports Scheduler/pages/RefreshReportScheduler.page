@@ -1,0 +1,5 @@
+<apex:page showHeader="false" standardStyleSheets="true"  >
+
+This component is deprecated. Please use "Scheduled Reports &amp; Dashboards"
+
+</apex:page>

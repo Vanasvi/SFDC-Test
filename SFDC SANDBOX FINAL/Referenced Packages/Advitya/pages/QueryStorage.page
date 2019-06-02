@@ -1,0 +1,473 @@
+<apex:page id="pge" sidebar="false" controller="advitya.QueryStorageController" docType="html-5.0" tabStyle="QueryStorage__tab">
+    <head>
+        <title>Advitya</title>
+        <apex:stylesheet value="{!$Resource.advitya__bootstrap_css}"/>
+        <apex:stylesheet value="{!URLFOR($Resource.advitya__querystorage_css)}"/>
+    </head>
+    
+    <body>
+
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Use to show the pop up when there in no active internet connection -->
+        <!-- The Modal -->
+        <div id="myModalnew" class="modal1">
+            <!-- Modal content -->
+            <div class="modal-content1">
+                <span class="close">&times;</span>
+                 <p>Oops!! your network connection seems to be broken,please check your connection.</p>
+            </div>
+        </div>
+        
+        <!-- Finish Code : Urvashi Shahi -->
+        
+        <div class="overlay"></div>
+        
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE :Css for No Internet connection Pop up>-->
+        <style>
+            .start-timerfooter-div
+            { 
+                word-spacing: 20px;
+            }
+            /*.start-timeremain-div 
+            {
+                word-spacing: 20px;
+            }*/
+            /* The Modal (background) */
+            .modal1 {
+                display: none; /* Hidden by default */
+                position: fixed; /* Stay in place */
+                z-index: 9999999999999; /* Sit on top */
+                padding-top: 100px; /* Location of the box */
+                left: 0;
+                top: 0;
+                width: 100%; /* Full width */
+                height: 100%; /* Full height */
+                overflow: auto; /* Enable scroll if needed */
+                background-color: rgb(0,0,0); /* Fallback color */
+                background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            }
+            p {
+                margin: 20px 0 0 0;
+            }
+            
+            /* Modal Content */
+             .modal-content1 {
+                   background: #f3f3f3;
+                    margin-top: 12px;
+                    width: 40%;
+                    margin-left: 30%;
+                    padding: 15px 5px;
+                    font-size: 17px;
+                    text-align: center;
+                    border-radius: 5px;
+                    color: #888484;
+                    font-weight: 600;
+                    margin-bottom: -22px;
+                    line-height: 23px;
+            }
+            
+            /* The Close Button */
+            .close {
+                color: #151414;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                opacity: .5;
+                margin-top: -15px;
+            }
+            
+            .close:hover,
+            .close:focus {
+                color: #000;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            .noInternetcon {
+                width: 100%;
+                text-align: center;
+                color:FF0000;
+                text-shadow:1px 1px 1px red;
+                text-transform: uppercase;
+            }
+            
+        </style>
+        <!-- Finish :Urvashi Shahi no internet connection pop up css  -->
+        
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Script use to check active internet connection with frequency of 1 second -->
+        <script>
+            var checkedBoxes='';
+            function removeErrorMsg()
+            {
+                //alert('removeErrorMsg()');
+                $(".error-sch-popup").hide();
+                $("#otherDate").removeClass("input-error");
+                $("#hour").removeClass("input-error");
+                $("#minute").removeClass("input-error");
+            }
+            
+            function saveCheckedBoxes(id){
+                if($("#"+id).is(":checked")){
+                    if(checkedBoxes=='')
+                    checkedBoxes=id;
+                else
+                    checkedBoxes+=","+id;
+                }else{
+                    checkedBoxes=checkedBoxes.replace(id,"");
+                    checkedBoxes=checkedBoxes.replace(",,",",");
+                    if(checkedBoxes.startsWith(","))
+                        checkedBoxes=checkedBoxes=checkedBoxes.substr(1);
+                }
+            }
+        </script>
+        
+
+        <script>
+            //alert("Onload Script for");
+            var nointernetmodal = document.getElementById('myModalnew');
+             //alert('nointernetmodal >' +nointernetmodal);
+
+            //Get the <span> element that closes the modal
+            var span = document.getElementsByClassName("close")[0];
+            
+            var connectionMessage = "Internet Connected";
+            var noConnectionMessage = "Oops!! your network connection seems to be broken,please check your connection!!";
+            var online = '';
+            window.onload = checkInternetConnection;
+            function checkInternetConnection() {
+                //alert('Start Internet status >>'+status);
+                 isOnLine = navigator.onLine;
+                if (isOnLine) {
+                   // alert(connectionMessage);
+                } 
+                else {
+                  // document.getElementById("Label1").innerText = "No Inernet Connection !!";
+                    //document.getElementById("Label12").innerText = "No Inernet Connection !!";  
+                    //alert(noConnectionMessage);
+                }
+                var x = setInterval(function()
+                { 
+                    var status = navigator.onLine;
+                    
+                    //alert('Internet status >>'+status);
+                    
+                    if (status) {
+                      nointernetmodal.style.display = "none";
+                        //document.getElementById("Label1").innerText = "";
+                        //document.getElementById("Label12").innerText = "";
+                        //console.log(connectionMessage);
+                        //alert(connectionMessage);
+                    }
+                    else {
+                        //document.getElementById("Label1").innerText = "No Inernet Connection !!";  
+                        //document.getElementById("Label12").innerText = "No Inernet Connection !!";  
+                        nointernetmodal.style.display = "block";
+                        //alert(noConnectionMessage);
+                        console.log(noConnectionMessage);
+                    }
+                }, 1000);
+            }
+            // When the user clicks on <span> (x), close the modal
+            span.onclick = function() {
+                nointernetmodal.style.display = "none";
+            }
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function(event) {
+                if (event.target == nointernetmodal) {
+                    nointernetmodal.style.display = "none";
+                }
+            }
+        </script>
+        
+        <script>
+        
+            sforce.connection.sessionId = "{!$Api.Session_ID}";
+            $(function(){
+                $(document).mouseup(function (e) {
+                    var popup = $("#popup");
+                    if (!$('#open').is(e.target) && !popup.is(e.target) && popup.has(e.target).length == 0) {
+                        popup.slideUp(500);
+                        $(".overlay").fadeOut();
+                    }
+                });
+                $("#query-name").keypress(function(e){
+                    if($(this).val()==" " && $(this).val().length==1){
+                        //$(this).val("");
+                        e.preventDefault();
+                    }
+                    if($(this).val().length==80)
+                        e.preventDefault();
+                });
+                    $("#query-desc").keypress(function(e){
+                        if($(this).val().length==500){
+                            e.preventDefault();
+                        }
+                    });
+                    $('input,textarea').bind('cut copy paste', function (e) {
+                        e.preventDefault();
+                    });
+            
+                var query="select name,advitya__cron__c, advitya__occurence__c, advitya__jobid__c from advitya__QueryStorage__c";
+                var qr = sforce.connection.query(query);
+                records = qr.getArray("records");
+                for(r in records){
+                    if(records[r]["advitya__Cron__c"]!=null){
+                        $("[id='"+records[r]["Name"]+"']").addClass("table-btns-on");
+                        $("[id='"+records[r]["Name"]+"']").removeClass("table-btns-off");
+                    }
+                }
+                $("#otherDate").keyup(function(e){
+                    if(parseInt($(this).val())>31 ||parseInt($(this).val())<1 || isNaN($(this).val())||$(this).val().length>2||$(this).val().includes(" ")){
+                        if(!($(this).val()=='')){
+                            $("#otherDate").addClass("input-error");
+                            $(".error-sch-popup").show();
+                            $(".error-sch-popup").text("Invalid Date! Please enter a date between 1 and 31!");       
+                        }
+                        e.preventDefault();
+                        $(this).val("");
+                    }
+                   $("#schedule-btn").css("pointer-events","all");
+                });
+            });
+            
+            
+             function showSchemaErrorOnSchedule(){
+                 $("#modify-loading").hide();
+                 if(window.confirm("Oops! You seem to have modified or deleted object/field(s) from the schema in your Salesforce Org used by this saved search! This saved search can't be user further. Do you want to delete it?")){
+                     try{
+                         sforce.connection.sessionId = "{!$Api.Session_ID}";
+                         var qrr = sforce.connection.query("Select Id From advitya__QueryStorage__c where name='"+queryToSchedule+"'"); 
+                         var tempRecords = qrr.getArray("records");
+                         var tempId=[];
+                         tempId.push(tempRecords[0]["Id"]);
+                         var result=sforce.connection.deleteIds(tempId);
+                         if(result[0].getBoolean("success"))
+                             alert("The saved search has been deleted successfully!");
+                         window.location.reload();
+                     }catch(e){
+                     }
+                 }
+             }
+             
+             function showSchemaErrorOnEdit(){
+                 $("#modify-loading").hide();
+                 if(window.confirm("Oops! You seem to have modified or deleted object/field(s) from the schema in your Salesforce Org used by this saved search! This saved search can't be user further. Do you want to delete it?")){
+                     try{
+                         sforce.connection.sessionId = "{!$Api.Session_ID}";
+                         var tempId=[];
+                         tempId.push(searchId);
+                         var result=sforce.connection.deleteIds(tempId);
+                         if(result[0].getBoolean("success"))
+                             alert("The saved search has been deleted successfully!");
+                         window.location.reload();
+                     }catch(e){
+                     }
+                 }
+             }     
+        </script>
+        <apex:form id="form" styleclass="fluid-container">
+            <div class="fluid-container">
+                <div id="sid" class="row" style="margin:0 !important; height: 39px; background: #7c7c7c; color: #fff; padding: 8px 0px 0px 10px; text-align: center;">
+                    
+                    <span style="font-weight: 600;font-size: 13px;">MANAGE YOUR SAVED SEARCHES HERE</span>
+                    <a id="delButton" href="javascript:void(0);" onclick="delSelected()" class="del-all-btn" style="display:none;">
+                    <img style="width: 25px; position: relative; padding-right: 6px;" src="{!$Resource.delete_white_icon}"/>Delete</a>
+                    
+                </div>
+                <div class="row" style="margin:0 !important; margin-top: 1px !important;">
+                   <apex:outputPanel id="pb">
+                        <script>
+                            $(function(){
+                               if($("#bodyDiv").children().length==0){
+                                   $("[id*='selectall']").css("pointer-events","none");
+                                   $("[id*='selectall']").prop('checked',false);
+                                   var noRecordNode="<div style='width: 100%;margin: 0 auto;font-size: 18px;padding-bottom: 20px;padding-top: 20px;text-align: center;color: #666;background: #fff;'>No Records</div>";
+                                   $("#bodyDiv").append(noRecordNode);       
+                               }
+                               var query="select name,advitya__cron__c, advitya__occurence__c, advitya__jobid__c from advitya__QueryStorage__c";
+                                var qr = sforce.connection.query(query);
+                                records = qr.getArray("records");
+                                for(r in records){
+                                    if(records[r]["advitya__Cron__c"]!=null){
+                                        $("[id='"+records[r]["Name"]+"']").addClass("table-btns-on");
+                                        $("[id='"+records[r]["Name"]+"']").removeClass("table-btns-off");
+                                        $("[id='"+records[r]["Name"]+"']").prop("title","Scheduled");
+                                    }
+                                }
+                                if($("[id*='selectall']").is(":checked")){
+                                    $("#bodyDiv").find("input").each(function(){
+                                        $(this).prop("checked",true);
+                                    });
+                                }else{
+                                    if(checkedBoxes==""){
+                                        $(".del-all-btn").hide();
+                                    }else{
+                                        for(x in checkedBoxes.split(",")){
+                                            $("#"+checkedBoxes.split(',')[x]).prop('checked',true);
+                                        }
+                                    }
+                                }
+                            });
+                        </script>
+<script>
+
+function myFunction(id) {
+    settingtIME(id);
+    var x = document.getElementById('clock1');
+    var oButton = document.getElementsByTagName("button");
+    alert(oButton);
+    var x = document.getElementById('clock1');
+    if (x.style.display === 'none') {
+        x.style.display = 'block';
+        document.getElementById("ShowTime").style.display = "none";
+    } else {
+        x.style.display = 'block';
+        document.getElementById("ShowTime").style.display = "none";
+    }
+}
+
+$(function(){
+    $(".next-sch-run").each(function(){
+        if($(this).find("span").text()=="")
+            $(this).find("span").text("Not Scheduled!");
+    });
+});
+
+</script>
+                       <table class="recordTable">
+                           <thead>
+                               <tr>
+                                   <th style="width:2%; border-right: #fff solid 1px;"><apex:inputCheckbox id="selectall" onclick="allCheck(this);" value="{!selectAll}"/></th>
+                                   <th class="col-md-1">Name</th>
+                                   <th class="col-md-2">Description</th>
+                                   <th class="col-md-1">Object</th>
+                                   <th class="col-md-2">Criteria Fields</th>
+                                   <th>Master Criteria</th>
+                                   <th class="col-md-1">Master Addons</th>
+                                   <th style="width:9%">Last Modified</th>
+                                   <th class="col-md-1" style="width:5%">Action</th>
+                                   <th class="col-md-1" style="width:5%">Schedule</th>
+                                   <th>Scheduled Next Run</th>
+                               </tr>
+                           </thead>
+                           <tbody id="bodyDiv">
+                               <apex:repeat value="{!Records}" var="q">
+                                   <tr>
+                                       <td style="width:2%; border-right: #fff solid 1px;"><input type="checkbox" id="{!q.id}" onclick="toggleDelAll(); saveChecked(this.id); checkDelAll(); if(!($(this).is(':checked'))){uncheck();}; saveCheckedBoxes(this.id);"/></td>
+                                       <td class="col-md-1 qryName" style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" title="{!q.name}" style="text-decoration:none!important; color:#222 !important;">{!q.name}</a></td>
+                                       <td class="col-md-2" style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" title="{!q.description__c}" style="text-decoration:none!important; color:#222 !important;">{!q.description__c}</a></td>
+                                       <td class="col-md-1" style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" title="{!q.qObject__c}" style="text-decoration:none!important; color:#222 !important;">{!q.qObject__c}</a></td>
+                                       <td class="col-md-2" style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" title="{!q.qCriteria__c}" style="text-decoration:none!important; color:#222 !important;">{!q.qCriteria__c}</a></td>
+                                       <td style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" title="{!q.masterField__c}({!q.masterValue__c})" style="text-decoration:none!important; color:#222 !important;">{!q.masterField__c}({!q.masterValue__c})</a></td>
+                                       <td class="col-md-1" style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" title="{!q.addonfields__c}" style="text-decoration:none!important; color:#222 !important;">{!q.addonfields__c}</a></td>
+                                       <td style="width:9%; overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" style="text-decoration:none!important; color:#222 !important;"><apex:outputField value="{!q.lastmodifieddate}"/></a></td>
+                                       <td class="col-md-1" style="width:5%">
+                                           <a id="{!q.id}" href="javascript:void(0);" class="table-btns table-btns-off" onclick="openEditPopup(this.id)"><span style="transform: rotate(49deg);font-size: 13px;" class="glyphicon glyphicon-pencil"></span>Edit</a>
+                                       </td>
+                                       <td class="col-md-1" style="width:5%">
+                                           <a id="{!q.name}" href="javascript:void(0)" style="padding: 4px 16px 4px 16px;" data-toggle="modal" data-target="#myModal" class="table-btns table-btns-off" onclick="queryToSchedule=this.id;settingtIME(queryToSchedule);checkStatus(this.id);" title="Schedule"><img style="display:inline-block;" src="{!$Resource.scheduler}"/></a> 
+                                       </td>
+                                       <td style="overflow:hidden; text-overflow:ellipsis; white-space: nowrap;"><a href="#" class="next-sch-run" style="text-decoration:none!important; color:#222 !important;"><apex:outputField value="{!q.advitya__Formula_Time_Remain__c}"/></a></td>
+                                        
+                                   </tr>
+                               </apex:repeat>
+                           </tbody>
+                       </table>
+                       <apex:actionFunction action="{!updateQueryDetails}" name="updateQueryDetails" reRender="pb" oncomplete="if('{!isSchemaChanged}'.length==5){$('.popup').slideUp();$('.overlay').css('display','none');}else{ showSchemaErrorOnEdit(); }">
+                           <apex:param name="idToUpdate" value=""/>
+                           <apex:param name="nameToUpdate" value=""/>
+                           <apex:param name="descToUpdate" value=""/>
+                       </apex:actionFunction>
+                       <apex:actionFunction action="{!deleteSelected}" name="deleteSelected" reRender="pb">
+                           <apex:param name="mChecked" value="" assignTo="{!selectAll}"/>
+                           <apex:param name="checkedID" value="" assignTo="{!checkedIDs}"/>
+                       </apex:actionFunction>
+                       <apex:actionFunction action="{!scheduleMerge}" name="scheduleMerge" reRender="pb" oncomplete="if('{!isSchemaChanged}'.length==5){scheduleComplete()}else{ showSchemaErrorOnSchedule();}">
+                           <apex:param name="qName" value=""/>
+                           <apex:param name="schCron" value=""/>
+                       </apex:actionFunction>
+                       <apex:actionFunction action="{!abortMerge}" name="abortMerge" reRender="pb" oncomplete="abortComplete()">
+                           <apex:param name="qaName" value=""/>
+                       </apex:actionFunction>
+                       <apex:actionFunction name="setSheduletime" action="{!setSheduletime}"  reRender="pb" onComplete=""/>
+                   </apex:outputPanel>
+               </div> 
+            </div>
+
+            <div class="modal fade" id="myModal" role="dialog">
+                <div class="scheduler-notify">The Job you are going to schedule has additional filters for selecting the master record (on Step 3). At the time of running of the Job if no record is found corresponding to your master selection criteria, the system will automatically select master record by removing your addition filters.</div>
+                <div class="modal-dialog" style="width: 437px;">
+                
+                    <!-- Modal content-->
+                    <div class="modal-content">
+                        <div class="modal-header popup-heading">
+                            <button type="button" class="close" data-dismiss="modal" style="color: #fff; opacity: 1;" >&times;</button>
+                            <h4 class="modal-title">Schedule Your Merges</h4>
+                        </div>
+                        <div class="modal-body" style="padding-left: 0;padding-right: 0;">
+                            <div class="row error-sch-popup"></div>
+                            <div id="month" class="row config-panel-monthly">
+                                <span style="margin-left: 21px;">Day</span><input type="text" id="otherDate" onclick="removeErrorMsg();" onkeypress="$(this).removeClass('input-error');$('.error-sch-popup').hide();"/><span>Of Every Month</span>
+                            </div> 
+                            <div class="start-time-div">
+                                <span style="margin-left: -69px;">Start Time</span>
+                                <select id="hour" onclick="removeErrorMsg();" style="margin-left: 0;">
+                                    <option>01</option><option>02</option><option>03</option><option>04</option><option>05</option><option>06</option><option>07</option><option>08</option><option>09</option><option>10</option><option>11</option><option>12</option>
+                                </select>
+                                <select id="minute" onclick="removeErrorMsg();">
+                                    <option>AM</option><option>PM</option>
+                                </select>
+                            </div>
+                            <div class = "start-timerheding-div">
+                                <!--<img style="display:inline-block;" src="{!$Resource.Timer}"/>-->
+                                <span style="width: 100%;text-align: left;"><div id="TimeLeft" class = "start-timerheding-div" style="font-size:14px; display:none;text-transform: uppercase;">Time until next run</div></span><br/>
+                                <span><div id="clock1" class = "start-timeremain-div" style="font-size:25px; display:none;"></div></span><br/>
+                                <div id="timer-labels" style="float: left;font-size: 11px;width: 100%;text-align: center;margin-top: -13px;display: none;">
+                                     <div style="float: left;padding: 10px;margin-left: 27%;">Days</div>
+                                     <div style="float: left;padding: 10px;margin-left: 0%;">Hours</div>
+                                     <div style="float: left;padding: 10px;margin-left: -2%;">Minutes</div>
+                                     <div style="float: left;padding: 10px;margin-left: -4%;">Seconds</div>   
+                                 </div>
+                                <!--<span><div id="clock2" class = "start-timerfooter-div" style="font-size:20px;"></div></span> -->
+                            </div>
+                            </div>
+                        <div class="modal-footer" style="text-align: center;">
+                            <a href="javascript:void(0)" class="sch-btns" onclick="scheduleJob(queryToSchedule);" id="schedule-btn" style="border-radius: 2px;">Schedule</a>
+                            <a href="javascript:void(0)" class="sch-btns" id="abort-btn" style="display:none;border-radius: 2px;" onclick="abortShedulejob(queryToSchedule);">Abort</a>
+                            <a href="javascript:void(0)" class="sch-btns" data-dismiss="modal" style="background: none;color: #676767!important;">Cancel</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="popup" class="popup"> 
+                <div class="popup-header">Edit your search<button type="button" class="close" style="color: #fff; opacity: 1;" onclick="closeEditPopup()">&times;</button></div>
+                <div class="popup-content">
+                    <div class="row" style="padding:10px 15px 0px 15px">
+                        <div class="col-md-3">Name</div> 
+                        <div class="col-md-6">
+                            <input id="query-name" type="text" style="font-weight: 100; padding: 5px;" onclick="$('.error-edit-popup').hide(); $(this).removeClass('input-error');" onkeypress="$('.error-edit-popup').hide(); $(this).removeClass('input-error');"/>
+                        </div>
+                        <div class="error-edit-popup col-md-3">Another query is already present under this name!</div>
+                    </div>
+                    <div class="row" style="padding:10px 15px 0px 15px">
+                        <div class="col-md-3">Description</div> 
+                        <div class="col-md-8">
+                            <textarea id="query-desc" style="resize: none; font-weight: 100; width: 100%; padding: 5px;" rows="4" cols="20"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="popup-footer">
+                <a href="javascript:void(0)" id="save-q-btn" class="popup-btns" onclick="updateQuery()">Save</a>
+                <a href="javascript:void(0)" class="popup-btns" onclick="closeEditPopup()">Cancel</a>
+                </div>
+            </div>
+        </apex:form> 
+        <apex:includeScript value="{!$Resource.advitya__QueryStoragescript}"/>
+        <apex:includeScript value="{!$Resource.advitya__jQueryMin}"/>
+        <apex:includeScript value="/soap/ajax/32.0/connection.js"/>
+        <apex:includeScript value="/soap/ajax/32.0/apex.js"/>
+        <apex:includeScript value="{!$Resource.advitya__Jquery_min}"/>
+        <apex:includeScript value="{!$Resource.advitya__bootstrap_jsmin}"/>
+    </body>
+</apex:page>

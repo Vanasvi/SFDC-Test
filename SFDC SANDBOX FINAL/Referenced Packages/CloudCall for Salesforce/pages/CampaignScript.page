@@ -1,0 +1,23 @@
+<apex:page id="pg" controller="synety.CampaignScriptController" showHeader="false" sidebar="false" 
+tabstyle="Contact" action="{!GetCampaignScript}">
+<script type="text/javascript">
+    function closWindow()
+    {
+        window.close();
+    }      
+</script>
+<apex:sectionHeader title="Script for: {!CampaginName}"/>
+<apex:pageMessages id="msg"/>
+ <apex:form >
+  <apex:pageBlock >
+        <apex:pageBlockButtons >
+             <apex:commandButton onclick="javascript:closWindow();" value="Close"/>
+        </apex:pageBlockButtons>
+        
+        <div id="ShowScript">
+        </div>
+        <apex:outputText escape="false" Id="Scripts"  value="{!CampaignScript}"></apex:outputText>       
+      
+    </apex:pageBlock> 
+  </apex:form>
+</apex:page>

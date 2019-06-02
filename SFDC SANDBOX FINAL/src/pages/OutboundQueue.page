@@ -1,0 +1,20 @@
+<apex:page controller="OutboundQueue">
+    <apex:pageBlock title="Are you ready for another?">
+         <apex:form >
+             Outbound calls today: <b>{!myTodayOutboundCount}</b>&nbsp;&nbsp;<br></br>
+             
+             <apex:commandButton value="Take Outbound Call" action="{!takeOutbound}"></apex:commandButton><br/>
+         </apex:form>
+    </apex:pageBlock>
+    
+     <apex:pageBlock title="Calls Completed Today">
+         <apex:pageBlockTable value="{!myTodayOutboundTouches}" var="app">
+            <apex:column headervalue="Upstart Name" value="{!app.Upstart__c}" />
+            <apex:column headervalue="Product Status" value="{!app.Status__c}" />
+            <apex:column headervalue="Ops Status" value="{!app.Ops_Status__c}" />
+            <apex:column headervalue="Call Priority" value="{!app.Outbound_Call_Priority__c}"/>
+            <apex:column headervalue="Verification Call" value="{!app.Verification_Call__c}"/>
+        </apex:pageBlockTable>
+    </apex:pageBlock>
+  
+</apex:page>

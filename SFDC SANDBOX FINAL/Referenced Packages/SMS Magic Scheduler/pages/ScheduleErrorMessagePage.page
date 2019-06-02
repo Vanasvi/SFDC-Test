@@ -1,0 +1,7 @@
+<apex:page standardController="smagicschedule__SMS_Schedule__c" tabStyle="smagicschedule__SMS_Schedule__c">
+
+<br/>
+<span style="font-weight: bold; font-size: 12pt;">Scheduling Error</span>  <br/>
+<br/>
+	Sorry you can not Schedule SMS from here to Schedule SMS for any object Please see the help from Schedule Help Tab.  
+</apex:page>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexComponent xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>32.0</apiVersion>
+    <description>Main component that is used for Call Recording Playback functionality on Salesfore1</description>
+    <label>PlayCallRecordingMobile</label>
+</ApexComponent>

@@ -1,0 +1,1396 @@
+<apex:page id="pg" controller="synety.AgentPanelController" showHeader="false" sidebar="false" 
+standardStylesheets="false">
+
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <title>Salesforce Sidebar</title>
+        <meta name="description" content="" />
+        <meta name="viewport" content="width=device-width" />
+        <link rel="stylesheet" href="/resource/synety__dialerStyles/css/normalize.min.css" />
+        <link rel="stylesheet" href="/resource/synety__dialerStyles/css/main.css?v119" />
+        <script src="/resource/synety__dialerStyles/js/vendor/modernizr-2.6.2.min.js"></script>
+        
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="/resource/synety__dialerStyles/js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+        <script src="/resource/synety__dialerStyles/js/main.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
+        
+        <style>
+        	.message {
+        	
+			-moz-border-radius: 4px;
+			-webkit-border-radius: 4px;
+			border-radius: 4px;
+			}
+			.errorM6, .errorM4, .errorM3, .errorM2, .errorS1 {
+			border-color: #c00;
+			}
+			.message {
+			background-color: #ffc;
+			border-style: solid;
+			border-width: 1px;
+			color: #000;
+			padding: 6px 8px 6px 6px;
+			margin: 4px 20px;
+			}
+			.message {
+			-moz-border-radius: 4px;
+			-webkit-border-radius: 4px;
+			border-radius: 4px;
+			}
+
+        	
+        	.messageCell{
+        		font-size: 10px;
+        	}
+        		
+			.clear {
+				clear: both;
+			}
+			#info_pop_box { 
+			   	display: none; 
+			   	position: fixed; 
+			   	bottom: 25px; 
+			   	right: 10px; 
+			   	padding: 15px; 
+			   	z-index: 99999; 
+			   	font-size: 10px; 
+			}
+			.info_pop_yellow { 
+				background: lightyellow; 
+			}
+			.info_pop_red { 
+				background: lightpink; 
+			}
+			
+			body{
+				background-color: white;
+			}
+			
+			.disableme
+			{
+				background-color: #dbdbdb;
+  				cursor: default;
+			}
+		</style>
+    </head>
+    <body>
+	    <!-- Imports Open CTI JavaScript library. It should point to a valid Salesforce domain. -->
+	    <script src="/support/api/29.0/interaction.js"></script>
+	    <script type="text/javascript">
+	        var namespacePrefix = "{!if($Organization.Id=='00DG0000000Ce3tMAC','','synety.')}";//"synety.";
+	        var agentDisplayName = '{!CurrentUserName}';
+	        var statusId = '{!status}';
+	        var onCall = '{!isOnCall}';
+	        var statuses = {};
+	        var CampaignActiveCalls = '{!CampaignActiveCalls}';
+	        var sInWrapUpTime = '{!InWrapUp}';
+	        var InWrapUpTime = null;
+	        
+	        var SynetyServerTime = null;
+	        var sSynetyServerTime = '{!SynetyServerTime}';
+	        
+	        var agentActiveCall = '';
+	        var SynetyConfigDetails = '{!SynetyConfigDetails}';
+	        var ServerTime = '{!ServerTime}';
+	        
+	        var sPresenceObj = '{!accountPresenceString}';
+	        var presenceObj = null;
+	        var accountId = '{!accountId}';
+	        
+	        var isInTransfer = false;
+	        
+	        var clickDevices = {};
+	        
+	        var hasTokenExpired = {!hasTokenExpired};
+	        
+	        var isNoteRequired = {!isNoteRequired};
+	        var isCallCatRequired = {!isCallCatRequired};
+	        var hideCategory_Subject = {!hideCategory_Subject};
+	        var CallNotificationsEnabled = {!CallNotificationsEnabled};
+	        
+	        var apiPlatform = '{!apiPlatform}';
+	        
+	        var campaignId = '';//Shumaila Campaign Script
+	        var campaignName = ''//Shumaila Campaign Script
+	        var IsConsoleCall = false; //Shumaila Sales Console
+	        var IsListUpdating = false; //Shumaila JIRA SFC-6
+	        var IsAgentConsole = false;//Shumaila DialPad Collapes issue
+	        var IsContactRecord = false; //Shumaila for add new Case
+	        var SelectType = ''; //Shumaila CRM Sync v2
+	        var Prefix = 'synety__'; //Shumaila CRM Sync v2
+	        var lstRelationshipEntities = '{!lstRelationshipEntities}';//Shumaila CRM Sync v2
+	        var RelatedToValue = '';//Shumaila CRM Sync v2 JIRA Issue SFC-84/61
+	        //Shumaila CRM Sync v2 JIRA Issue SFC-132
+	        var SetCategoryValue = '';
+	        var IsCategoryOnFocus = false;
+	        var IsSelectingCategory = false;
+	        var lstLookupEntities = '{!lstLookupEntities}'; //Shumaila RelatedTo Free
+	        var IsCallRecordingEnable = '{!IsCallPauseResumeEnable}'; 
+	        var HasCaseRights = JSON.parse('{!HasCaseRights}'); 
+	        
+	        //JIRA Issue SFC-223
+	        var IsJSONEnable = JSON.parse('{!IsJSONEnable}');
+	        var IsDetailNotesEnable = JSON.parse('{!IsDetailNotesEnable}');
+         	var IsDetailCategoryEnable = JSON.parse('{!IsDetailCategoryEnable}');
+          	var IsDetailSubjectEnable = JSON.parse('{!IsDetailSubjectEnable}');
+           	var IsDetailCust1Enable = JSON.parse('{!IsDetailCust1Enable}');
+            var IsDetailCust2Enable = JSON.parse('{!IsDetailCust2Enable}');
+            
+           	var Detailcust1Label = '{!Detailcust1Label}';
+            var Detailcust2Label = '{!Detailcust2Label}';
+            var DetailCust1Type = '{!DetailCust1Type}';
+            var DetailCust2Type = '{!DetailCust2Type}';
+            
+             //JIRA Issue SFC-288
+            var IsDetailcust1Required = JSON.parse('{!IsDetailcust1Required}');
+           	var IsDetailcust2Required = JSON.parse('{!IsDetailcust2Required}');
+            var IsSubjectRequired = JSON.parse('{!IsSubjectRequired}');
+            //****************  
+	    </script>
+	    <script src="/resource/synety__agentSignalR3/jquery-1.9.0.js" type="text/javascript"></script>
+	  	<script src="/resource/synety__agentSignalR3/jquery.signalR-1.0.1.js" type="text/javascript"></script>
+	  	<!-- 
+	  	<script src="https://notifications.cloudcallcontact.com/signalr/hubs" type="text/javascript"></script>
+	  	 -->
+	  	 
+	  	 
+	  	<!-- Change for the stagging 
+        <script src="https://notifications.{!apiPlatform}.cloudcall.com/signalr/hubs" type="text/javascript"></script>
+        -->
+        
+        <!-- Change for the stagging --> 
+        <script src="https://{!if(apiPlatform=='staging', 'staging-notifications.cloudcallcontact.com', 'notifications.'+apiPlatform+'.cloudcall.com')}/signalr/hubs" type="text/javascript"></script>
+        
+	  	
+	  	
+	  	<script src="/resource/synety__agentSignalR3/signalr_functions.js?v119" type="text/javascript"></script>
+	  	
+	    <!-- Import jQuery from google CDN, could also be static resource-->
+	    <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" />
+	    <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+	    <script src="/resource/synety__jqueryCookie?v119"></script>
+		<script src="https://malsup.github.io/jquery.blockUI.js"></script>
+		
+		
+		 <!-- Jquery Dropdown 
+		 	//Yasir VoiceMailDrop Feature	
+	 	  --> 
+        <link type="text/css" rel="stylesheet" href="/resource/synety__jqueryDropdown/jquery.dropdown.css" />
+		<script type="text/javascript" src="/resource/synety__jqueryDropdown/jquery.dropdown.js"></script>
+		
+		<script type="text/javascript">
+	        
+	        $(function () {
+	        	/*
+	        	$([window, document]).focusin(function(){
+			      debugLog('focusin');
+			   	}).focusout(function(){
+			      debugLog('focusout');
+			   	});
+			   */
+			   
+				if(sPresenceObj != '')
+					presenceObj = JSON.parse(sPresenceObj);
+				
+				if(hasTokenExpired == false)
+				{	
+					getWrapupTime();
+		        	//onload methods
+		        	statuses["Online"] = "13";
+		        	statuses["Busy"] = "25";
+			        statuses["Offline"] = "17";
+			        statuses["In wrap up"] = "6";
+			        
+			        <apex:repeat value="{!mapDeviceOpt}" var="deviceNum">
+			        	clickDevices["{!deviceNum}"] = "{!mapDeviceOpt[deviceNum]}";
+					</apex:repeat>
+					
+			        //Invokes CTI API method
+			        sforce.interaction.cti.enableClickToDial(enableClickToDialCallBack);
+			        sforce.interaction.cti.onClickToDial(click2Diallistener);
+			        
+			        sforce.interaction.isInConsole(callback); //Shumaila SalesConsole
+			        sforce.interaction.onFocus(onFocuscallback); //Shumaila Console Related to	       
+			        
+			        getPageInfo();
+			        
+			        initAccordion();
+			        //Shumaila Console View
+		        	if((OtherClickDeviceOnCall || onCall == 'true') && (IsConsoleCall || IsAgentConsole)) //Shumaila DialPad Collapes issue
+						 DialerViewUp(false);									
+
+		        	loadAgentCampaigns();
+		        	initSignalR(); 
+		        	showCurrentStatus();
+		        	
+		        	getSavedPageState();
+		        	
+			        //Shumaila console view	        	   
+		        	$("div.expander-controller").click(function(){	        	     	
+						$(this).find("a").toggleClass("arrow-down").toggleClass("arrow-up");				
+					
+						var $expander = $(this).prev();
+						$expander.find(".expander").slideToggle("fast");
+						$expander.find(".expander").toggleClass("collapsed");								
+					});				      	 
+	        	}
+	        	
+	        	changeHeight();
+	        	//setInterval(changeHeight, 1000);
+	        	
+	        	//Yasir VoiceMailDrop Feature	
+             	$("#VoiceMailFiles2 li").on("click", function(){
+				      var selVMfile = $(this).attr('id');
+				      reachedVM(selVMfile);
+			    });
+			    
+			    $("#VoiceMailFiles3 li").on("click", function(){
+				      var selVMfile = $(this).attr('id');
+				      reachedVM(selVMfile);
+			    });
+	        	
+	        });
+	        //Shumaila console view
+	        function DialerViewUp(doExpand)
+	        {
+	        	if(doExpand)
+	        	{
+	        		$(".expander").slideDown();
+	        		$("#Arrow").removeClass("arrow-down").addClass("arrow-up");
+	        		$("#ArrowHeader").removeClass("arrow-down").addClass("arrow-up");  
+	        	}
+				else
+				{
+					$(".expander").slideUp();
+					$("#Arrow").removeClass("arrow-up").addClass("arrow-down");
+	        		$("#ArrowHeader").removeClass("arrow-up").addClass("arrow-down");  
+					  
+	        	}
+	        	
+	        	/*
+	        	$("#Arrow").toggleClass("arrow-down").toggleClass("arrow-up"); 
+	        	$("#ArrowHeader").toggleClass("arrow-down").toggleClass("arrow-up");    	
+				$(".expander").slideToggle("fast");
+				$(".expander").toggleClass("collapsed");
+				*/ 					      	
+	        }		
+			var currentServerTime= convertDateTime(ServerTime);
+			var ConfCallWindow = null;
+			
+	    </script>
+	<div id="divMsg" style="display:block">
+		<apex:pageMessages id="msg"/>
+	</div> 
+	<!-- 
+	<apex:outputpanel rendered="{!lstDeviceOpt.size>0}">
+	 -->
+	 
+
+	<apex:outputpanel rendered="{!doShowPanel}">
+    <apex:form id="frm">
+    <!--
+    		<apex:inputText id="phoneNumberFieldId" />
+            <apex:inputHidden id="phoneNameFieldId" 
+                              />
+        -->    
+        <div class="sidebar">
+        	<div class="box" id="divUserPresenceStatus" style="overflow: visible;" >
+        		
+				<!-- <font color="red" size="1">Welcome {!displayName}</font> -->
+				<div class="head">
+					 <!-- 
+					<input title="update availability" type="button" value="Update" class="rtbtn" id="cmdPresence" onClick="login_logout();return false;" />
+					 -->
+					
+					
+					
+						<span style="font-size: 13px; margin: 0px; font-weight:bold; ">Availability</span>&nbsp;&nbsp;&nbsp;
+					<div class="dropdown_handler_presence">
+						<div id="currentStatusText" class="value" title="set your presence status by clicking here">&nbsp;</div>
+						<ul class="options" id="statusOptions">
+							<li>Online</li>
+							<li>Busy</li>
+							<li>Offline</li>
+							
+						</ul>
+					</div>
+					
+					<input type="hidden" id="lstStatus"  value="{!status}"/>
+					
+				</div>
+				<div class="expander">
+				<div>
+					Number / Click Device:
+					<div class="dropdown_handler">
+						
+						<div id="user_number" class="value" title="set your click device or available phone number by clicking here">{!if(phNumber != null, mapDeviceOpt[phNumber], '')}</div>
+						<ul class="options" id="numberOptions">
+							<apex:repeat value="{!mapDeviceOpt}" var="deviceNum">
+								<li id="num_{!deviceNum}">{!mapDeviceOpt[deviceNum]}</li>
+							</apex:repeat>
+						</ul>	
+					</div>
+					<input type="hidden" id="lstPhNum"  value="{!phNumber}"/>
+					<!-- 
+					<label for="lstPhNum">Available Number / Click Device:</label>
+					<apex:selectList size="1" id="lstPhNum" value="{!phNumber}">
+				        <apex:selectOptions value="{!lstDeviceOpt}"/>
+				    </apex:selectList>
+					 -->
+					 
+				</div>
+				
+				<!--				
+				<div>
+					Presence:
+					<div class="dropdown_handler">
+						<div id="currentStatusText" class="value" title="set your presence status by clicking here">&nbsp;</div>
+						<ul class="options" id="statusOptions">
+							<li>Online</li>
+							<li>Busy</li>
+							<li>Offline</li>
+						</ul>
+					</div>
+					<input type="hidden" id="lstStatus"  value="{!status}"/>
+				</div>
+				-->
+								
+				<!-- 
+				<div>	
+					<label for="lstStatus">Presence:
+					<span id="currentStatusText"
+        				style="font-size: 10px"></span>
+					</label>
+					
+					<apex:selectList id="lstStatus" value="{!status}" size="1">
+    
+				        <apex:selectOption itemLabel="Available for Calls" 
+				            itemValue="13"/>
+				        <apex:selectOption itemLabel="Unavailable for Calls" 
+				            itemValue="25"/>
+				        <apex:selectOption itemLabel="Offline/Logout" 
+				            itemValue="17"/>
+				         
+				    </apex:selectList>
+				</div>
+				 -->
+				</div>
+        	</div>
+        	
+        	<div class="expander-controller"><a href="#" class="arrow-up" id = "ArrowHeader"></a></div>	
+			<!-- Shumaila Console View -->
+ 			<div id = "divCallStatus" class = "box" style="display: none;">
+				<div id="callStatus_Cli" class="outgoing" style="display: none;">
+						<span id="callStatus" style="font-size: 11px;" title="current call status">&nbsp;</span><br />
+						<span id="cli" title="phone number">&nbsp;</span>        		
+				</div>
+				<div id="campName" class="callcampaign" style="font-size: 11px; display: none;">&nbsp;</div>
+				<!-- Shumaiala Campaign Script -->
+				<div id="CampaignScript" style="font-size: 11px; display: none;" class = "script">
+					<!-- //Shumaila Hide Campaign Script -->
+				   	<div id="LinkScript" style="display: none;">
+				    	<a  href="javascript:void(0)" onclick = "CallCampaignScript()">Campaign Script</a>
+				   	</div>								
+				</div>
+				<div id="countdown" style="font-weight:bold; color:red; font-size:10px; text-align:center ; display:none">&nbsp;</div>
+			</div>	
+			
+        	<div id="divCallInfo" class="box" style="display:block"> <!-- style="display:none"> --> 
+        		<div class="head">
+        			<input title="hangup call" type="button" value="Hangup" class="rtbtn_hangup" id="cmdHangup2" onClick="hangupCall();return false;" style="display:none" />
+					<!-- <h1>Dial Pad</h1> -->
+					<span style="font-size: 13px; margin: 0px; font-weight:bold; ">Dial Pad</span>
+				</div>
+				
+       			<!-- Shumaila Console View -->
+ 				<div class="expander"> 
+        		<div id="divDialpad"> <!-- style="display:none"> -->
+        			<div class="number" id = "callNumDial">
+        				<input type="text" name="number" id="callNum" style="display:block"
+        					onkeypress="return isNumberKey(event)" />
+        				<div id="clear">X</div>
+        				<div id="backspace">&larr;</div>
+        			</div>
+        			<ul class="keypad">
+        				<li id="num1">1</li>
+        				<li id="num2">2</li>
+        				<li id="num3">3</li>
+        				<li id="num4">4</li>
+        				<li id="num5">5</li>
+        				<li id="num6">6</li>
+        				<li id="num7">7</li>
+        				<li id="num8">8</li>
+        				<li id="num9">9</li>
+        				<li id="numstr">*</li>
+        				<li id="num0">0</li>
+        				<li id="numhash">#</li>
+        			</ul>
+        			<!-- 
+	        		<div class="number">
+		    			<input type="text" name="number" id="callNum" value="" title="use dialpad or enter number here to dial it or transfer an active call" />
+		    			<div title="clear number" id="clear" onClick="clearNumber();">X</div>
+		    		</div>
+	       			<ul class="keypad">
+	       				<li onClick="enterNumber('1');">1</li>
+	       				<li onClick="enterNumber('2');">2</li>
+	       				<li onClick="enterNumber('3');">3</li>
+	       				<li onClick="enterNumber('4');">4</li>
+	       				<li onClick="enterNumber('5');">5</li>
+	       				<li onClick="enterNumber('6');">6</li>
+	       				<li onClick="enterNumber('7');">7</li>
+	       				<li onClick="enterNumber('8');">8</li>
+	       				<li onClick="enterNumber('9');">9</li>
+	       				<li onClick="enterNumber('*');">*</li>
+	       				<li onClick="enterNumber('0');">0</li>
+	       				<li onClick="enterNumber('#');">#</li>
+	       			</ul>
+	       			-->
+	       			
+	       			<ul class="keypad2">
+                        <!-- 
+                        <li id="cmdDial" class="dial" onClick="dialNumber();">Dial</li>
+                         -->
+                        <li id="cmdDial" class="dial" title = "dial">Dial</li>
+                        
+                        <li id="cmdHangup" class="hangup disabled" style="display: none; " >Hangup</li>
+        				
+        				<li id="cmdMute" class="disabled" title = "mute me">Mute</li>
+        				<li id="cmdCallRecording" class="disabled" title = "pause call recording">||</li>
+        				<li id="cmdTransfer" class="disabled" title = "call transfer">Trnsf</li>
+        				<li id="cmdHold"  class="disabled" title = "hold me">Hold</li>
+        				<li id="cmdVM" class="disabled" title = "voice message">VM</li>
+        				<li id="cmdConf" class="disabled" title = "add to conference">Conf</li>
+        				<!-- <li id="cmdConf" class="conf disabled" >Conf</li> -->
+        				
+                        <!-- 
+        				<li id="cmdHangup" class="hangup disabled" style="display: none; cursor: pointer;" onClick="hangupCall();" >Hangup</li>
+        				<li id="cmdMute" class="disabled" onClick="muteMe();">Mute</li>
+        				<li id="cmdCallRecording" class="disabled" onClick="pauseRecording();">||</li>
+        				<li id="cmdTransfer" class="disabled" onClick="transferCall();">Trnsf</li>
+        				<li id="cmdHold"  class="disabled" onClick="holdUnholdCall();">Hold</li>
+        				<li id="cmdConf" class="conf disabled" onClick="startConferenceCall();">Conf</li>
+        				 -->
+        			</ul>
+        			<!-- 
+	       			<ul class="keypad2">
+	       				<li title="dial number" id="cmdDial" class="dial" onClick="dialNumber();">Dial</li>
+	       				<li title="hangup call" id="cmdHangup" class="hangup" onClick="hangupCall();" style="display:none">Hangup</li>
+	       				<li title="mute me" id="cmdMute" onClick="muteMe();">Mute</li>
+	       				<li title="pause call recording" id="liCallRecording" onClick="pauseRecording();">||</li>
+	       				<li title="transfer call" id="cmdTransfer" onClick="transferCall();">Trnsf</li>
+	       				<li title="hold call" id="cmdHold" onClick="holdUnholdCall();">Hold</li>
+	       				<li title="start conference call" onClick="startConferenceCall();" class="conf">Conference</li>
+	       				<li>VM</li>
+	       			</ul>
+	       			-->
+	       			
+	       			<!-- 
+	       		 	<ul class="keypad2">
+	       		 		<li class="hangup" style="display:none" onClick="hangupCall();return false;">Hangup</li>
+	       		 	</ul>
+	       		 	-->
+       		 	</div>
+       		 	
+       		 	<!--  
+       		 	//Yasir VoiceMailDrop Feature 
+       		 	-->
+       		 	
+       		 	
+       		 	<div id="dropdown-1" class="dropdown dropdown-tip" style="top:150px !important; left:25px !important;">
+				    <ul id="VoiceMailFiles2" class="dropdown-menu" >
+				        <li id="-1"><a href="#">Leave Live VM</a></li>
+				        <li id="0"><a href="#">Default</a></li>
+					</ul>				    
+				</div>
+       		 	 
+       		 	
+       		 	<div id="dropdown-2" class="dropdown dropdown-tip" style="top:150px !important;  left:25px !important;">
+				    <ul id="VoiceMailFiles3" class="dropdown-menu" >
+					    <apex:repeat value="{!lstVMFiles}" var="lstVMFile">
+					        <li id="{!lstVMFile.value}"><a href="#">{!lstVMFile.label}</a></li>
+					    </apex:repeat>
+					</ul>				    
+				</div>
+       		 	
+       		 	<!--  
+       		 	//Yasir VoiceMailDrop Feature 
+       		 	
+       		 	<div id="dropdown-1" class="dropdown dropdown-tip" style="top:200px !important;  left:30px !important;">
+				    <ul id="VoiceMailFiles" class="dropdown-menu" >
+					    <apex:repeat value="{!lstVMFiles}" var="lstVMFile">
+					        <li id="{!lstVMFile.value}"><a href="#">{!lstVMFile.label}</a></li>
+					    </apex:repeat>
+					</ul>				    
+				</div>
+				-->
+       		 	<!--  
+       		 	//Yasir VoiceMailDrop Feature 
+       		 	
+       		 	<div id="VMFileList" style="display:none">
+       		 		<label for="lstVMFile">VoiceMail :</label>
+       		 		<apex:selectList id="lstVMFile" size="1" value="{!selVMFile}" onchange="reachedVM();">
+       		 			<apex:selectOptions value="{!lstVMFiles}" />
+					</apex:selectList>
+       		 	</div>
+       		 	-->
+       		 	
+       		 	<!--  <div id="countdown" style="font-weight:bold; color:red; font-size:10px; text-align:center">&nbsp;  Wrapup in 90 Seconds </div>-->
+       		 	
+       		 	</div>
+        	</div>
+        	
+        	<div class="expander-controller"><a href="#" class="arrow-up" id = "Arrow"></a></div>
+        	<div id="divCallNotes" class="box" style="display:none">
+        			
+				<div class="head">
+					<!-- <input title="save call notes" type="button" id="cmdSaveNotes" onClick="saveNotes();return false;" value="Save" class="rtbtn" />-->
+					<h1>Call Details</h1>
+				</div>
+				<div id="divClickCallContact" style="color: red; font-size: 12px;">
+				<h7></h7>
+				</div>
+       			<ul id="accordion" >
+       				
+       			</ul>
+       			
+       			<div id="divSelectContact" style="display:none">
+       				 <select id="lstContactType" name="ContactType" onChange="typeChanged(this);">
+       				 </select>
+		        	<!--Shumaila CRM Sync v2
+		        	<apex:selectList id="lstContactType" size="1" onChange="typeChanged(this);" value="{!callRecordType}">
+		        		<apex:selectOptions value="{!lstCallRecordType}"/>
+		    	         <apex:selectOption itemLabel="Select Record Type..." 
+				            itemValue=""/>
+				            Shumaila JIRA SFC-18 
+		    	        <apex:selectOption itemLabel="Contact" 
+				            itemValue="Contact"/>
+				        <apex:selectOption itemLabel="Account" 
+				            itemValue="Account"/>
+				        <apex:selectOption itemLabel="Lead" 
+				            itemValue="Lead"/>
+				    </apex:selectList>
+				    
+			        <div id="divContact" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow('contact');return false;" value="Add New Contact" /> 
+			        	<span style="font-size:10px">or search Contact</span><br />
+			        	<apex:inputField id="contact" value="{!oCallUpdate.Contact__c}" label="" style="width:160px" />
+			        </div>
+			        <div id="divAccount" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow('account');return false;" value="Add New Account" />
+						<span style="font-size:10px">or search Account</span><br />
+			        	<apex:inputField id="account" value="{!oCallUpdate.Account__c}" label="" style="width:160px" />
+			        </div>
+			        <div id="divLead" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow('lead');return false;" value="Add New Lead" />
+			        	<span style="font-size:10px">or search Lead</span><br />
+			        	<apex:inputField id="lead" value="{!oCallUpdate.Lead__c}" label="" style="width:160px" />
+			        </div>
+			      -->
+			        <div id="divSearchRecord" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow(SelectType);return false;" value="Add New Record" />
+			        	<span style="font-size:10px">or search</span><br />			        	
+			        	<input id="txtSearchRecord" type="text" name="UnKnown" style="width:140px"  value="" 
+			        				onchange= "SetCurrentContact(this);this.oldvalue = txtSearchRecord.value;"/>
+			        	<!--
+			        	<input type="button" class="rtaddbtn" onClick="openSearchlookupWindow(SelectType);return false;" value="Search Record" />
+			        	-->
+			        	<a href="#" id="recordLookup" onclick="openSearchlookupWindow(SelectType);return false;" 
+			                title="Record Lookup (New Window)" style="text-decoration: none;">
+			                <img src="/s.gif" alt="Record Lookup (New Window)" 
+			                class="lookupIcon" 
+			                onblur="this.className = 'lookupIcon';" 
+			                onfocus="this.className = 'lookupIconOn';" 
+			                onmouseout="this.className = 'lookupIcon';this.className = 'lookupIcon';" 
+			                onmouseover="this.className = 'lookupIconOn';this.className = 'lookupIconOn';" 
+			                title="Record Lookup (New Window)"/>
+			            </a>
+			            <a href="#" id="LookupRecord" onclick="if(hiddenSelectId.value != ''){openRecordWindow(hiddenSelectId.value);}return false;" 
+			                title="Go to record" style="text-decoration: none;">
+			                <img src="/img/icon/documents16.png" title="Go to Record"/>
+			            </a>
+			        	<input type="hidden" id="hiddenSelectId"  value=""/>		       
+			        </div>
+		        </div>
+		        <!-- ****************************************************** -->
+		        <!-- Shumaila Related To-->
+       			<div id="divRelatedTo" style="display: none;">
+       				<!--<label for="lstCat">Related To:</label>-->
+			        <select id="ddl_RelatedTo" name="RelatedTo" onclick="setAppendTo();">
+					</select>
+       			</div>
+       			<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+       			<div id="divCallSubject" style="display: none;">       			
+       				<input id="txtCallSubject" type="text" name="CallSubject" style="width:190px"  
+       					onkeyup="storeCallDetailsCust();" onfocus="isTyping=true;" onblur="isTyping=false;"
+       					 placeholder= "Call Subject"/>
+       			</div>
+       			<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+       			
+       			<div id="divlstCat" style="display: block;">
+       				<!--<label for="lstCat">Call Category:</label>-->
+       				<apex:selectList id="lstCat" size="1" value="{!selCat}" 
+       					onchange="SetCategory(this);" onclick="ResetCategoryBit();"><!-- Shumaila CRM Sync v2 JIRA Issue SFC-132 -->
+			           <apex:selectOptions value="{!lstCallCatOpt}"/>
+			        </apex:selectList>
+       			</div>
+       			<div>
+       				<div id="divtxtNote" style="display: block;">
+       					<apex:inputTextArea onfocus="isTyping=true;" onblur="isTyping=false;" onkeyup="storeCallNotes();" id="txtNote" rows="5"
+       					 html-placeholder="Enter Notes">
+       					</apex:inputTextArea>       				
+       				</div>
+       				<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+	       			<div id="divDetailCust1" style="display: none;">
+	       				<!--<div id="divDetailCust1label">&nbsp;</div>-->
+	       				<div id="divDetailCust1DropDown" style="display: none;">
+		       				<apex:selectList id="lsDetailcust1" size="1" value="{!Detailcust1}"
+		       					onchange="SetCustCategory(this);" onclick="ResetCustCategoryBit();">
+					           <apex:selectOptions value="{!lstDetailcust1}"/>
+					        </apex:selectList>
+	       				</div>  
+	       				<div id="divDetailCust1SingleText" style="display: none;">
+		       				<input id="txtDetailCust1" type="text" name="DetailCust1" style="width:190px" 
+		       				 	onkeyup="storeCallDetailsCust();" 
+		       				 	onfocus="isTyping=true;" onblur="isTyping=false;"
+		       				 	placeholder="{!Detailcust1Label}"/>
+	       				</div>  
+	       				<div id="divDetailCust1MultiText" style="display: none;">
+		       				<apex:inputTextArea id="txtMultiDetailCust1" rows="5"
+		       					onkeyup="storeCallDetailsCust();" onfocus="isTyping=true;" onblur="isTyping=false;"
+		       					html-placeholder="{!Detailcust1Label}">
+	       					</apex:inputTextArea>
+	       				</div>       				
+	       			</div>
+	       			
+	       			<div id="divDetailCust2" style="display: none;">
+	       				<!--<div id="divDetailCust2label">&nbsp;</div>-->
+	       				<div id="divDetailCust2DropDown" style="display: none;">
+	       					<apex:selectList id="lsDetailcust2" size="1" value="{!Detailcust2}" 
+	       						onchange="SetCustCategory(this);" onclick="ResetCustCategoryBit();">
+					           <apex:selectOptions value="{!lstDetailcust2}"/>
+				        	</apex:selectList>
+	       				</div> 
+						<div id="divDetailCust2SingleText" style="display: none;">
+		       				<input id="txtDetailCust2" type="text" name="DetailCust2" style="width:190px"  
+		       					onkeyup="storeCallDetailsCust();" onfocus="isTyping=true;" 
+		       					onblur="isTyping=false;"
+		       					placeholder="{!Detailcust2Label}"/>
+	       				</div>  
+	       				<div id="divDetailCust2MultiText" style="display: none;">
+		       				<apex:inputTextArea id="txtMultiDetailCust2" rows="5"
+		       					onkeyup="storeCallDetailsCust();" onfocus="isTyping=true;" onblur="isTyping=false;"
+		       					html-placeholder="{!Detailcust2Label}">
+		       					</apex:inputTextArea>
+	       				</div>        				
+	       			</div>
+	       			<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+       				
+       				<div class="more">...</div>
+       				<input type="button" value="Save" class="save" title="save call notes" id="cmdSaveNotes" onClick="saveNotes();return false;" />
+       			</div>
+       			<div class="morebox">
+                    <!-- Shumaila for add New Case -->
+                    <input type="button" style="display:none;" value="Save & Create New Case" class="save" id="cmdSaveNote_Case"  title="save call notes and create new case" onClick="saveNotes('create case');return false;" />
+                    
+                    <input type="button" value="Save & Create Followup Task" class="save" id="cmdSaveNote_Task"  title="save call notes and create a followup task" onClick="saveNotes('create task');return false;"  />
+                    <input type="button" value="Save & Create Followup Event" class="save" id="cmdSaveNote_Event"  title="save call notes and create a followup event" onClick="saveNotes('create event');return false;" />	
+                 	       
+                </div>
+                <!-- 
+       			<div class="head">
+					<input title="save call notes" type="button" id="cmdSaveNotes" onClick="saveNotes();return false;" value="Save" class="rtbtn" />
+					<h1>&nbsp;</h1>
+				</div>
+				-->
+        	</div>
+        </div>
+     </apex:form>   
+     </apex:outputpanel>   
+        <script>
+        	var isTyping = false;
+	    	window.onbeforeunload = function(e) 
+		    {
+		    	savePageState();
+		    	
+		    	if(!OtherClickDeviceOnCall && document.getElementById('divCallNotes').style.display != 'none' && 
+		    		((hideCategory_Subject == false && isCallCatRequired == true) || isNoteRequired == true)
+		    		&& statusId != '6'
+		    	  )
+		    	{
+		    		//var PageURL = pageInfo.url;	
+		    		//if(PageURL.indexOf('/e?') == -1)
+		    			//return 'You have not saved the call notes yet.';
+		    		//else
+		    			openNewCallNotesWindow();
+		    	}
+		    	
+		    };
+		    
+		    startTime();
+		    /*
+		    $(".more").bind("click", function() {
+   				$(".morebox").slideToggle(100);
+   			});
+			
+			$("#cmdSaveNote_Task").bind("click", function() {
+   				$(".morebox").slideToggle(100);
+   			});
+			
+			$("#cmdSaveNote_Event").bind("click", function() {
+   				$(".morebox").slideToggle(100);
+   			});
+   			*/
+   			
+   				$('html').click(function() {
+					$(".morebox").slideUp(100);
+					$(".options").slideUp(100);
+				});
+				$(".value").bind("click", function(e) {
+    				$(this).next().slideToggle(100);
+    				//event.stopPropagation();
+					e.stopPropagation();
+    			});
+				
+				$(".options li").bind("click", function(event) {
+    				
+    				var newvalue = $(this).html(); // this is value you can send to API
+    				//alert(newvalue);
+    				if(this.id != '')
+    				{
+    					//click device change option was clicked
+    					var phNum = this.id;
+    					phNum = phNum.replace('num_','');
+    					//alert(phNum);
+    					//alert(clickDevices[phNum]);
+    					document.getElementById('lstPhNum').value=phNum;
+    					
+    					$(this).parent().prev().html(newvalue);
+    					
+    					changeHeight(); 
+    				}
+    				else
+    				{
+    					var statusId = statuses[newvalue];
+    					//alert(statusId);
+    					document.getElementById('lstStatus').value=statusId;
+    				}
+    				
+    				//return;
+    				
+    				event.stopPropagation();
+    				$(".options").slideUp(100);
+    				
+    				login_logout();
+    				
+    			});
+    			 
+    			 $( window ).bind('keypress', function(e){
+				   if ( e.keyCode == 13 && !isTyping && !OtherClickDeviceOnCall && e.target.defaultValue != 'Save') {
+				     $("#cmdDial").click();
+				   }
+				 });  			
+    			$("#cmdDial").click(function() {
+    				// this is mostly to simulate how things will change when on call, but you can use those scripts
+    				//Shumaila CRM Sync v2 JIRA Issue SFC-114
+    				if ($(this).hasClass("disabled")!=true) 
+    				{
+	    				if (document.getElementById('callNum').value.trim().length >2)
+	    				{
+		    				var isDialing=dialNumber();
+		    				if(isDialing)
+		    				{
+		    					//$(this).hide();
+		    					//$(this).next().show();
+		    				}
+	    				}
+	    				else
+	    					alert('Minimum 3-digits extension is allowed');
+    				}    				
+    			});
+    			
+    			$("#cmdHangup").click(function() {
+    				if ($(this).hasClass("disabled")!=true) 
+    				{
+    				
+	    				// this is mostly to simulate how things will change when on call, but you can use those scripts
+	    				$(this).hide();
+	    				$(this).prev().show();
+	    				hangupCall();
+	    			}
+    			});
+    			
+    			$("#cmdConf").click(function() {
+    				if ($(this).hasClass("disabled")!=true) 
+    				{
+    				
+	    				startConferenceCall();
+	    			}
+    			});
+    			
+    			$(".more").bind("click", function(e) {
+    				$(".morebox").slideToggle(100);
+    				e.stopPropagation();
+    			});
+    			
+    			$(".keypad li").click(function(){
+    				if ($(this).hasClass("disabledme")!=true) 
+    				{
+	    				var number = $(this).html();
+	    				var callnumber = $('#callNum').val();
+	    				
+	    				//Yasir CRM Sync v2 JIRA Issue SFC-59
+	    				//if(callnumber.length <= 13) 
+	    				if(callnumber.length < 20)
+							$('#callNum').val(callnumber + number);
+	    				
+	    				$('#callNum').focus();
+    				}
+    			});
+    			
+    			$("#clear").click(function() {
+    				$('#callNum').val("");
+    				$('#callNum').focus();
+    			});
+    			$("#backspace").click(function() {
+    				var value = $("#callNum").val();
+    				value = value.substr(0, value.length-1);
+    				$("#callNum").val(value);
+    				$('#callNum').focus();
+    			});
+    			
+    			$("#cmdCallRecording").click(function() {
+    				if ($(this).hasClass("disabled")!=true) {
+    					pauseRecording();
+    				}
+					
+    			});
+    			
+    			$("#cmdHold").click(function() {
+    				if ($(this).hasClass("disabled")!=true) {
+    					holdUnholdCall();
+    				}
+					
+    			});
+    			
+    			$("#cmdMute").click(function() {
+    				if ($(this).hasClass("disabled")!=true) {
+    					muteMe();
+    				}
+					
+    			});
+    			
+    			//Yasir transfercall
+    			$("#cmdTransfer").click(function() {
+    				if ($(this).hasClass("disabled")!=true) 
+    				{
+    					transferCall();
+    					/*
+    					if (document.getElementById('callNum').value.trim().length >2)
+    				 		transferCall();
+    				 	else
+    				 		alert('Minimum 3-digits extension is allowed');
+   				 		*/
+    				}
+					
+    			});
+    			
+    			//Yasir VoiceMailDrop Feature
+    			$("#cmdVM").click(function() {
+    				if ($(this).hasClass("disabled")!=true) 
+    				{    					
+    					if(currentCallStatus.VoicemailOptionId == 1)
+                    	{
+                    		reachedVM(currentCallStatus.VoicemailOptionId);
+                    	}
+                    	else if(currentCallStatus.VoicemailOptionId == 2)
+                    	{
+        		            var VMButton = document.getElementById("cmdVM");
+	                    	var att = document.createAttribute("data-dropdown");
+	                    	att.value = "#dropdown-1"; 
+	                    	VMButton.setAttributeNode(att);  	                    	
+                    	}
+                    	else if(currentCallStatus.VoicemailOptionId == 3)
+                    	{
+        		            var VMButton = document.getElementById("cmdVM");
+	                    	var att = document.createAttribute("data-dropdown");
+	                    	att.value = "#dropdown-2"; 
+	                    	VMButton.setAttributeNode(att);  
+                    	}
+                    	changeHeight();
+    				}
+					
+    			});
+    			
+    			
+		   		
+			   function isNumberKey(evt)
+		       {
+		          var charCode = (evt.which) ? evt.which : event.keyCode;
+		          
+		          
+		          if(charCode == 35 || charCode == 42)
+		          	return true;
+		          	
+		          //Yasir JIRA Issue SFC-247
+		          //if (charCode != 46 && charCode > 31
+		          if (charCode > 31 && (charCode < 48 || charCode > 57))
+		             return false;
+					
+					var callnumber = $('#callNum').val();
+					//Yasir CRM Sync v2 JIRA Issue SFC-59
+					//if(callnumber.length > 13) 
+					if(callnumber.length > 19)
+						return false;
+						
+		          return true;
+		       }
+		       
+		       /*
+		       var onFocus_callback = function (response) 
+		       {
+           			if (response.result) 
+           			{
+                  		debugLog('onFocus_callback: '+response.result);
+           			}
+        		};
+       			//Invokes API method
+                sforce.interaction.onFocus(onFocus_callback);
+                                
+                window.onblur = blurText;
+
+				function blurText() {
+			  		debugLog("blur event detected!");
+			  		// remove the event to stop an infinite loop!
+			  		window.onblur = '';
+				}
+				*/
+				
+				function checkCallState()
+				{
+					//console.log('isTyping='+isTyping);
+					//if(!isTyping)
+					//{
+					if (typeof(Storage) != "undefined")
+  					{
+						var sessionId = '';
+						if(currentCallStatus != null)
+							sessionId = currentCallStatus.SessionID;
+						else
+							sessionId = lastCallSessionId;
+						
+  						if(document.getElementById('divCallNotes') == null)
+  							return;
+  					
+  						//JIRA Issue SFC-261**********
+  						if(sessionId != '')
+  						{							
+							var isSaved = localStorage.getItem("callSaved_"+sessionId);
+							//debugLog("localStorage callSaved_"+sessionId+':'+isSaved);
+							if(document.getElementById('divCallNotes').style.display != 'none' && isSaved == 'true' && isSaved != null) //Shumaila CRM Sync v2 JIRA Issue SFC-172
+							{
+								debugLog('close call' + isSaved);
+								wrapupEnds(true);
+							}
+							else
+							{
+								//if(!isTyping && !IsConsoleCall)
+								if(!isTyping)
+								{										
+									SyncTabs(sessionId);
+								}
+							}							
+						}
+					}
+					else
+					{
+						debugLog("Sorry, the browser does not support Web Storage...");
+					}
+					//}
+				}
+				
+				setInterval(checkCallState, 100);
+				
+				function storeCallNotes()
+				{
+					// Check browser support
+					if (typeof(Storage) != "undefined")
+				  	{
+				  		var sessionId = '';
+						if(currentCallStatus != null)
+							sessionId = currentCallStatus.SessionID;
+						else
+							sessionId = lastCallSessionId;
+						
+						if(sessionId != '')
+						{	
+						  	// Store
+						  	localStorage.setItem("callNotes_"+sessionId, document.getElementById("pg:frm:txtNote").value);
+						}					  						  	
+				  	}
+					else
+				  	{
+				  		debugLog("Sorry, the browser does not support Web Storage...");
+				  	}
+				}
+				
+				function storeCallDetailsCust()
+				{
+					// Check browser support
+					if (typeof(Storage) != "undefined")
+				  	{
+				  		var sessionId = '';
+						if(currentCallStatus != null)
+							sessionId = currentCallStatus.SessionID;
+						else
+							sessionId = lastCallSessionId;
+						
+						if(sessionId != '')
+						{	
+						  	// Store
+						  	if(localStorage.getItem('CallDetailsCust1_'+sessionId) == 'Cust1SingleText')
+						  		localStorage.setItem("callDetailsCust1SingleText_"+sessionId, document.getElementById("txtDetailCust1").value);
+						  	
+						  	else if(localStorage.getItem('CallDetailsCust1_'+sessionId) == 'Cust1MultiText')
+						  		localStorage.setItem("callDetailsCust2MultiText_"+sessionId, document.getElementById("pg:frm:txtMultiDetailCust1").value);
+						  	
+						  	if(localStorage.getItem('CallDetailsCust2_'+sessionId) == 'Cust2SingleText')
+						  		localStorage.setItem("callDetailsCust1SingleText_"+sessionId, document.getElementById("txtDetailCust2").value);
+						  	
+						  	else if(localStorage.getItem('CallDetailsCust2_'+sessionId) == 'Cust2MultiText')
+						  		localStorage.setItem("callDetailsCust2MultiText_"+sessionId, document.getElementById("pg:frm:txtMultiDetailCust2").value);
+						
+							if(document.getElementById('divCallSubject').style.display == "block")
+								localStorage.setItem("callDetailsCallSubject_"+sessionId, document.getElementById("txtCallSubject").value);
+						}				  						  	
+				  	}
+					else
+				  		debugLog("Sorry, the browser does not support Web Storage...");				  	
+				}
+				
+				//Yasir VoiceMailDrop Feature
+				function reachedVM(VoicemailOptionId)
+				{
+					if(currentCallStatus != null && isOutboundCampaignCall)
+					{
+						var diallerNumber = '';
+						var SessionId = '';
+						var iCustomer = '';
+						var iAccount = '';
+						var VMDropFieldId = '';
+						var jsonParam = '';
+						var VMFileId = '';
+						
+						iCustomer = '{!i_Customer}' ;
+						iAccount  = '{!i_Account}' ;
+						
+						
+						//if(VoicemailOptionId == 1 || VoicemailOptionId == 2)
+						if(currentCallStatus.VoicemailOptionId == 1 || currentCallStatus.VoicemailOptionId == 2)
+						{
+							//Default Voicemail Audio File
+							if(currentCallStatus.VoicemailOptionId == 2)
+								VMFileId = VoicemailOptionId;
+							//Disabled
+							else if(currentCallStatus.VoicemailOptionId == 1)
+								VMFileId = -1;
+						}
+						else if(currentCallStatus.VoicemailOptionId == 3)
+						{
+							//VMFileId = document.getElementById('pg:frm:lstVMFile').value;
+							VMFileId = VoicemailOptionId;
+						}
+							
+						if(currentCallStatus.CLD != null && currentCallStatus.SessionID != null && iCustomer != null && iAccount != null)
+						{    
+							diallerNumber = currentCallStatus.CLD;
+							SessionId     = currentCallStatus.SessionID;
+						}
+						
+						jsonParam = '{"Cld":"'+diallerNumber+'","i_account":"'+iAccount+'","i_customer":"'+iCustomer+'","Sessionid":"'+SessionId+'","VoicemailDropFieldid":"'+VMFileId+'"}';
+						
+						debugLog('VMDropFile Params:'+jsonParam);
+						
+						sforce.interaction.runApex(namespacePrefix+'AgentPanelController','ReachedVM', 
+										'params='+jsonParam, ReachedVMCallBack);
+										
+						$.blockUI({
+		                message: 'Please wait while processing request',
+		                centerY: true,
+		                css: {
+							width: '150px',
+							height: '75px',
+							left: ($(window).width() - 150) / 2 + 'px',
+							top: (($(window).height() < 300) ? ($(window).height() - 75) / 2 : 30)  + 'px',
+						} 
+		            });
+					}
+				}
+				
+				
+				 
+				 //Yasir VoiceMailDrop Feature
+				 function ReachedVMCallBack(response)
+				 {
+				 	$.unblockUI();
+				 	var ResponseResult = JSON.parse( response.result );
+				 	
+				 	debugLog('ResponseResult : ' + ResponseResult.success);
+				 	debugLog('ResponseResult : ' + ResponseResult.VoicemailDropFieldid);
+				 	
+				 	var sessionId = '';
+			      	if(currentCallStatus != null)
+			       		sessionId = currentCallStatus.SessionID;
+			      	else
+			       		sessionId = lastCallSessionId;
+				 	
+				 	if (ResponseResult.success) 
+				 	{				 		
+				 		 
+				 		if(ResponseResult.VoicemailDropFieldid == -1)
+				 			enableCallControls(false, true);
+				 		localStorage.setItem("ReachedVMCallBack_"+sessionId, JSON.stringify(true));
+				 	}
+					else
+					{
+						debugLog('error on LeaveVoiceMailFileCallBack : ' +response.error);
+					} 
+				 }
+                
+                //Yasir VoiceMailDrop Feature 
+                //previous code on VM button comment by yasir 3-20-2015
+                /*
+                function reachedVM() 
+                {
+                    if(currentCallStatus != null && isOutboundCampaignCall)
+                    {   
+                        var diallerNumber = '';
+                        var campaignId = '';
+                        var diallerCallId = '';
+                        
+                        if(currentCallStatus.CLD != null)
+                            diallerNumber = currentCallStatus.CLD;
+                        
+                        if(currentCallStatus.CampaignId != null)
+                            campaignId = currentCallStatus.CampaignId;
+                            
+                        if(currentCallStatus.DiallerCallID != null)
+                            diallerCallId = currentCallStatus.DiallerCallID;
+                            
+                        var jsonParam = '{"campaignId":"'+campaignId+'","diallerCallId":"'+diallerCallId+'"';
+                            jsonParam += ',"diallerNumber":"'+diallerNumber+'"}';
+                        
+                        debugLog('ReachedVM Params:'+jsonParam);
+                                
+                        sforce.interaction.runApex(namespacePrefix+'AgentPanelController','ReachedVM', 
+                                                    'params='+jsonParam, ReachedVMCallBack);
+                        
+                        $.blockUI({
+                            message: 'Please wait while processing request',
+                            centerY: true,
+                            css: {
+                                width: '150px',
+                                height: '75px',
+                                left: ($(window).width() - 150) / 2 + 'px',
+                                top: (($(window).height() < 300) ? ($(window).height() - 75) / 2 : 30)  + 'px',
+                            }
+                            
+                        });
+                    }
+                }
+                
+                
+                function ReachedVMCallBack(response)
+                {
+                    $.unblockUI();
+                    if (response.result) 
+                    {
+                        isVMDone = true;
+                        //Shumaila CRM Sync v2 JIRA Issue SFC-150
+                        var sessionId = '';
+                        if(currentCallStatus != null)
+                            sessionId = currentCallStatus.SessionID;
+                        else
+                            sessionId = lastCallSessionId;
+                        localStorage.setItem("ReachedVMCallBack_"+sessionId, JSON.stringify(isVMDone));
+                        //********************************
+                        debugLog('ReachedVMCallback response: '+response.result);
+                        enableCallControls(false, true);
+                    } 
+                    else 
+                    {
+                        debugLog('error on ReachedVMCallback:'+response.error);
+                    }
+                
+                }
+                */
+                
+                
+		        //Shumaila Campaign Script
+		        function CallCampaignScript()
+		        {
+		        	window.open('/apex/'+Prefix+'CampaignScript?Id='+campaignId+'&Name='+campaignName,"CampaignScriptWindow","width=800,height=400");
+		        }
+		        //Shumaila CRM Sync v2
+		        function openSearchlookupWindow(type)
+		        {
+		        	//Shumaila CRM Sync JIRA Issue SFC-44
+		        	var URL = '/apex/'+Prefix+'customLookup?ObjectName='+type;
+		        	var GetSearchString = document.getElementById('txtSearchRecord').value;
+				
+					if(GetSearchString != '')
+						URL += '&GetSearchString='+encodeURIComponent(GetSearchString);
+					
+		        	if(type == 'Select Record Type...')
+		        	{
+		        		alert('Please select a record type');
+		        	}
+		        	else		        	
+		        		window.open(URL,"SearchtWindow","width=800,height=400");
+		        }//***************SFC-44********************
+	        //Shumaila CRM Sync v2 JIRA Issue SFC-132
+		     function SetCategory(SelectCategory)
+		     {
+		     	IsSelectingCategory = true;
+		     	var sessionId = '';
+				if(currentCallStatus != null)
+					sessionId = currentCallStatus.SessionID;
+				else
+					sessionId = lastCallSessionId;
+					
+		     	IsCategoryOnFocus = false;
+		     	
+		     	localStorage.setItem("CategoryValue_"+sessionId,'Category');//JIRA Issue SFC-223		     	
+		     	
+		     	localStorage.setItem("IsCategoryOnFocus_"+sessionId, JSON.stringify(IsCategoryOnFocus));
+		     	localStorage.setItem("SetCategoryValue_"+sessionId, SelectCategory.value);
+		     	//SetCategoryValue = SelectCategory.value;
+		     }	
+		     
+		     function ResetCategoryBit()
+		     {		
+		     	var sessionId = '';
+				if(currentCallStatus != null)
+					sessionId = currentCallStatus.SessionID;
+				else
+					sessionId = lastCallSessionId;
+					  
+		     	if(!IsSelectingCategory)   		
+	     			localStorage.setItem("IsCategoryOnFocus_"+sessionId, JSON.stringify(true));
+	     		
+	     		IsSelectingCategory = false;
+		     }
+		     
+		     //JIRA Issue SFC-223**********
+		     function SetCustCategory(SelectCategory)
+		     {
+		     	IsSelectingCategory = true;
+		     	
+		     	var sessionId = '';
+				if(currentCallStatus != null)
+					sessionId = currentCallStatus.SessionID;
+				else
+					sessionId = lastCallSessionId;
+					
+		     	IsCategoryOnFocus = false;
+		     	
+		     	localStorage.setItem("CategoryValue_"+sessionId,'Cust');//JIRA Issue SFC-223
+		     	
+		     	localStorage.setItem("IsCategoryOnFocus_"+sessionId, JSON.stringify(IsCategoryOnFocus));
+		     	localStorage.setItem("SetCategoryValue_"+sessionId, SelectCategory.value);		     
+		     }	
+		     
+		     function ResetCustCategoryBit()
+		     {		
+		     	var sessionId = '';
+				if(currentCallStatus != null)
+					sessionId = currentCallStatus.SessionID;
+				else
+					sessionId = lastCallSessionId;
+					  
+		     	if(!IsSelectingCategory)   		
+	     			localStorage.setItem("IsCategoryOnFocus_"+sessionId, JSON.stringify(true));
+	     		
+	     		IsSelectingCategory = false;
+		     }
+		     //JIRA Issue SFC-223*********
+		     
+		     
+		     
+		     function setAppendTo()
+		     {
+		     	var sessionId = '';
+				if(currentCallStatus != null)
+					sessionId = currentCallStatus.SessionID;
+				else
+					sessionId = lastCallSessionId;
+					
+		     	IsListUpdating = true; 
+		     	localStorage.setItem("IsListUpdating_"+sessionId,JSON.stringify(true));
+		     }
+		   //********************************  
+		       
+	    </script>
+	 <!-- Shumaila CRM Sync v2 JIRA Issue SFC-103 -->
+	   <script id="CurrentContact">	   	 
+   		function SetCurrentContact(val)
+        {
+        	 //JIRA Issue SFC-158
+        	if(val != null)
+        	{
+        		if(val.oldvalue != undefined && document.getElementById('hiddenSelectId').value.trim() !='')
+        			document.getElementById('hiddenSelectId').value = '';	
+        	}
+        	//************************
+        	var selectedValue = document.getElementById('hiddenSelectId').value;
+			if(selectedValue != '')
+				CurrentContact =  selectedValue;
+				
+        	/*var selectedValue = document.getElementById('txtSearchRecord').value;
+			if(selectedValue != '')
+				CurrentContact =  document.getElementById('txtSearchRecord').value;
+        	*/
+        	
+        	$('#ddl_RelatedTo').empty();
+			$('#ddl_RelatedTo').append('<option value="Select">Select Related To...</option>');
+			
+			if(document.getElementById('hiddenSelectId').value != '')
+			{
+				//Shumaila CRM Sync v2 Conference RelatedTo
+				if(FromConference && IsConferenceContactExist)
+				{
+					ConferenceCount = "0"; 
+					ConferenceRelatedToCount = "0"
+					ConferenceRelatedToIDs = '';
+					var selRecord = getSelectedRecord();
+					SetConferenceRelatedTo();
+				}
+				else
+        			AppendRelatedTo();				
+			}
+			
+        }
+        
+        
+	   </script>
+	    <!-- 
+	    <div id="divCallTransfer" style="display:none; cursor: default; width: 150px"> 
+	        Transferring call.<br />Please wait....<br /> 
+	        <input style="width:120px" type="button" id="cancelTransfer" value="Cancel Tranfer" onClick="cancelTransfer();return false;" /><br />
+	        <span style="font-size:12px">Please hangup to complete the transfer</span>
+		</div>
+		 -->
+		<div id="info_box" class="clear"></div>
+		<div id="info_pop_box"></div>
+		<input type="hidden" id="recordingPaused" value="false" /> 
+		<input type="hidden" id="pIsMute" value="false" />
+		
+    </body>
+</html>
+
+</apex:page>

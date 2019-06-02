@@ -1,0 +1,97 @@
+<apex:page controller="synety.SearchController"  sidebar="false" showHeader="false"> 
+
+<script type="text/javascript">
+	var Type = '{!SelectedSobject}';
+	var newId = "{!$CurrentPage.parameters.CustomPage}";
+</script>
+     <apex:pageBlock >  
+        <apex:form >
+           <apex:pageMessages id="msg"/>
+            <apex:pageBlockSection columns="1" title="Search" collapsible="false" id="searchPanel" >
+                
+                <apex:outputpanel >
+                   <apex:outputLabel >Enter Text</apex:outputLabel>&nbsp;
+                   <div><apex:inputtext value="{!searchString}" />&nbsp;&nbsp;&nbsp;                		
+           			<apex:commandButton value="Search" action="{!searchData}" />
+           			</div>
+                </apex:outputPanel>
+                
+            </apex:pageBlockSection>
+           
+            <apex:pageBlockSection columns="1" title="Search Results (click on record for select)" collapsible="false" id="PGresultPanel">
+	            <apex:outputpanel ID="resultPanel">
+	            	
+	            	 <table width = "100%" ID="Test">
+		                <tr>                                   
+		                    <td align="Center"> 
+		                    	 <!--  <apex:panelGrid columns="5" style="Position: Center" >-->
+		                            <apex:commandButton action="{!first}" title="Beginning" value="<<First" disabled="{!IF(currentViewList_custom.size > 0 && (hasPrevious), false , true)}" rerender="resultPanel" status="Status"/>
+		                            <apex:commandButton action="{!previous}" title="Previous" value="<Previous"  disabled="{!Not(hasPrevious)}" rerender="resultPanel"  status="Status"/>        
+		                            <apex:commandButton action="{!next}" title="Next" value="Next>" disabled="{!Not(hasNext)}" rerender="resultPanel"  status="Status"/>
+		                            <apex:commandButton action="{!last}" title="End" value="Last>>" disabled="{!IF(currentViewList_custom.size > 0 && (hasNext), false , true)}" rerender="resultPanel"  status="Status"/>                                  
+		                        	  
+		                        	  <apex:actionStatus id="Status">
+						                <apex:facet name="start">
+						                      Loading........
+						                  
+						              </apex:facet>
+						          	</apex:actionstatus>
+	            	
+		                        <!--  </apex:panelGrid> -->
+		                    </td>
+		                    <td align="right">
+		                    	<b> Page number: {!pagenumber} / {!TotalPages}</b>
+		                    </td> 		                    
+		                </tr>
+		            </table>  
+	                <apex:pageBlockTable rendered="{!IF(currentViewList_custom.size > 0 , true , false)}" 
+	                	value="{!currentViewList_custom}" var="NextRec" Id = "SearchDetail" >   
+	               	<!-- Shumaila CRM Sync v2 JIRA Issue SFC-112 -->	
+	                  
+	                   <apex:column headerValue="Name" onclick="SelectRecordId(this);">  
+	                    	<a href="javascript:void(0)" style="color:blue" class="RecordName"> {!NextRec.RecordName} </a>
+	                    	<span style="display:none" class="RecordId"> {!NextRec.RecordId} </span> 
+	                    </apex:column>
+	                    <apex:column headerValue="Company Name" value="{!NextRec.RecordCompanyName}"/>  
+	                    <apex:column headerValue="Email Address" value="{!NextRec.RecordEmailAddress}"/>                                       
+	                </apex:pageBlockTable> 
+                </apex:outputpanel>
+            </apex:pageBlockSection> 
+                 
+        </apex:form> 
+        <script>
+        function SelectRecordId(Record)
+		{
+		     var RecordID = Record.getElementsByClassName('RecordId')[0].innerHTML;
+		     if(RecordID != null)
+		     	RecordID = RecordID.trim();
+		     if(RecordID.length>15)
+		     	RecordID = RecordID.substring(0,15);
+		     	
+		     if(newId != "")
+		     {
+		     	 var Param = 'pg:frm:PgBlock:PgBlockSection:ObjectTb:'+newId+':txtSearchRecord';
+		     	 
+		     	 window.opener.document.getElementById(Param).value = window.opener.DecodeSpecialCharacters(Record.getElementsByClassName('RecordName')[0].innerHTML);
+			     window.opener.document.getElementById(Param).oldvalue = Record.getElementsByClassName('RecordName')[0].innerHTML;
+			     
+			     Param = 'pg:frm:PgBlock:PgBlockSection:ObjectTb:'+newId+':hiddenSelectId';
+			     window.opener.document.getElementById(Param).value = RecordID;
+			 	 
+		     }
+		     else
+		     {
+		     	 window.opener.document.getElementById("txtSearchRecord").value = window.opener.DecodeSpecialCharacters(Record.getElementsByClassName('RecordName')[0].innerHTML);
+			     window.opener.document.getElementById("hiddenSelectId").value = RecordID;
+			      //JIRA Issue SFC-158
+			     window.opener.document.getElementById("txtSearchRecord").oldvalue = Record.getElementsByClassName('RecordName')[0].innerHTML;
+			     window.opener.SetCurrentContact();//Shumaila CRM Sync v2 JIRA Issue SFC-103
+		     }
+			
+		     window.close(); 
+		}
+        </script>    
+    
+     </apex:pageBlock>
+  
+ </apex:page>

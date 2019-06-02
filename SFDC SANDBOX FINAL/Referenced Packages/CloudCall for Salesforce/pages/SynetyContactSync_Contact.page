@@ -1,0 +1,44 @@
+<apex:page standardController="Contact" extensions="synety.SynetyContactSyncController" recordSetVar="contacts" action="{!loadContacts}">
+<script type="text/javascript">
+	if({!doRedirect})
+	{
+		alert("Record(s) exported successfully.");
+		window.location = '{!retURL}';
+	}
+</script>
+<apex:sectionHeader title="Export Selected Record(s) to Synety Campaign"/>
+   <apex:PageMessages id="msgs" />
+    
+   <apex:form >
+    <!-- Yasir CRM Sync v2 JIRA Issue SFC-106 -->
+   <apex:outputPanel rendered="{!RecordsExists}">     
+       <apex:pageBlock title=" ">
+       
+            <apex:pageBlockButtons >
+                <apex:commandButton action="{!exportToSynety}" value="Confirm Export"/>
+                <apex:commandButton action="{!cancelExport}" value="Cancel"/>
+            </apex:pageBlockButtons>
+            <apex:pageBlockSection title="" collapsible="false">
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Select Synety Campaign"/>
+                    <apex:outputPanel >
+                        <apex:selectList rendered="{!selCampaign == ''}" size="1" id="lstCampaigns" value="{!selCampaign}" style="font-size: 15px;">
+					        <apex:selectOptions value="{!lstCampaigns}"/>
+					    </apex:selectList>
+					    <apex:outputLabel rendered="{!selCampaign != ''}" value="{!synCampaignName}" style="font-size: 15px;"/>
+					    
+                    </apex:outputPanel>
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+            <apex:pageBlockTable value="{!selectedContacts}" var="contact">
+                <apex:column value="{!contact.name}"/>
+                <apex:column value="{!contact.account.name}"/>
+                <apex:column value="{!contact.phone}"/>
+                <apex:column value="{!contact.mobilephone}"/>
+                <apex:column value="{!contact.otherphone}"/> 
+            </apex:pageBlockTable> 
+       </apex:pageBlock>
+    </apex:outputPanel>
+    </apex:form>    
+</apex:page>

@@ -1,0 +1,163 @@
+<apex:page standardController="Task"  showHeader="false"
+standardStylesheets="false"  sidebar="false" docType="html-5.0">
+
+<c:PlayCallRecordingMobile />
+<!--
+    <apex:stylesheet value="/l/%7B%22mode%22%3A%22PROD%22%2C%22app%22%3A%22one%3Aone%22%2C%22preloads%22%3A%5B%22aura%22%2C%22ui%22%5D%2C%22requestedLocales%22%3A%5B%22en_US%22%2C%22en%22%5D%2C%22loaded%22%3A%7B%22APPLICATION%40markup%3A%2F%2Fone%3Aone%22%3A%22RolK2f7or5wnRQlm-BvQ5g%22%7D%2C%22lastmod%22%3A%221405452950000%22%2C%22fwuid%22%3A%229CWByHqele7x78MwTMyO8g%22%7D/app.css"/>
+    
+    <style>
+    .heading{
+        font-family: 'ProximaNovaSoft-SemiBold';
+        color: #3c3d3e;
+        white-space:normal;
+        vertical-align: middle; 
+        font-size: 18px;
+        height: 10px;
+    } 
+    .errorMessage{
+        font-family: 'ProximaNovaSoft-Regular';
+        color: #3c3d3e;
+        white-space:normal;
+        font-size: 16px;
+    }
+    
+    audio {
+    
+        display: block;
+        width: 100%;
+        color: #3c3d3e;           
+    }
+    
+     .list-view-header{
+         font-family: 'ProximaNovaSoft-Regular';
+         font-weight: normal;
+         width: 100%;
+         height: 35px;
+         background: linear-gradient(#2A94D6,#107abb);
+         background: -moz-linear-gradient(#2A94D6,#107abb);
+         background: -webkit-linear-gradient(#2A94D6,#107abb);
+         background: -ms-linear-gradient(#2A94D6,#107abb);
+         box-shadow: none;
+         box-sizing: border-box;
+         color:white; 
+         vertical-align: middle; 
+         text-align: left; 
+         padding-left: 15px;
+         padding-top: 8px;    
+     } 
+         
+    .GeneralMessage{
+        font-family: 'ProximaNovaSoft-SemiBold';
+        color: #3c3d3e;
+        white-space:normal;
+        font-size: 18px;
+    }                       
+    
+    </style>
+
+    <div id="sfDiv" style="width: 100%;display:none; font-family: 'ProximaNovaSoft-Regular'; color: #3c3d3e; white-space:normal;">
+        <div class="list-view-header">CloudCall: Call Recording</div>
+        This option is only available for Salesforce1 Mobile App. Please use the basic 'Play Call Recording' button to play a call recording.
+    </div>
+    <div id="s1Div" style="display:none">  
+        <div class="heading">CloudCall: Call Recording</div>
+        <br/>
+        <apex:outputPanel rendered="{!contains($CurrentPage.URL,'isdtp=p1')}">
+    
+              <apex:outputpanel rendered="{!not(isAvailable)}">
+                  <div class="errorMessage">
+                    Call recording is NOT available for this activity<br/>
+                  </div>
+              </apex:outputpanel>
+              
+              <apex:outputpanel rendered="{!NOT(isEnabled)}">
+                  <div class="errorMessage">    
+                      Call Recording has NOT been enabled for you<br/>
+                      To have Call Recording enabled please visit <a href="https://www.synety.com">www.synety.com</a><br/>
+                  </div>
+              </apex:outputpanel>
+              
+              <apex:outputLabel rendered="{!isAvailable && isEnabled}">
+                  <script type="text/javascript">
+                    function getMP3File()
+                    {
+                        
+                        var url = '{!url}&type=mp3&account={!account}';
+                        var xmlhttp;
+                        if (window.XMLHttpRequest)
+                        {
+                            // code for IE7+, Firefox, Chrome, Opera, Safari
+                            xmlhttp=new XMLHttpRequest();
+                        }
+                        else
+                        {
+                            // code for IE6, IE5
+                            xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+                        }
+                        
+                        xmlhttp.onreadystatechange=function()
+                        {
+                            if (xmlhttp.readyState==4 && xmlhttp.status==200)
+                            {
+                                if("{!doPlay}" == "true")
+                                {
+                                    var audioHTML = '';
+                                    if(xmlhttp.getResponseHeader('content-type') == 'audio/wav')
+                                    {
+                                        audioHTML = '<div class="errorMessage"> There is no MP3 file for this call yet. Please check back later or <a href="'+url+'">click here</a> to download the recording file in currently available format. </div>';
+                                    }
+                                    else
+                                    {           
+                                        audioHTML = '<br/> <audio controls="controls" ><source src="'+url+'" type="audio/mpeg" /></audio>';
+                                    }
+                                    
+                                    document.getElementById("divAudioPlayer").innerHTML = audioHTML;
+                                    document.getElementById("waitMsg").style.display = 'None';
+                                }
+                            }
+                            else if (xmlhttp.readyState==4)
+                            {
+                                var responseJSON = JSON.parse(xmlhttp.responseText);
+                                alert(responseJSON.errorMessage);
+                                window.close();
+                            }
+                        }
+                        xmlhttp.open("GET",url,true);
+                        xmlhttp.send();
+                    }
+                  </script>
+                  <div id = "waitMsg">
+                    <div class="GeneralMessage"> 
+                        Please wait while call recording loads...<br />
+                    </div>
+                  </div>
+                  <apex:outputpanel rendered="{!doPlay}">          
+                    <div id="divAudioPlayer"></div>   
+                  </apex:outputpanel>
+                  <script>getMP3File();</script>
+              </apex:outputLabel>
+        </apex:outputPanel>
+    </div>  
+    
+    <script>
+        try
+        {
+            if( (typeof sforce != 'undefined') && (sforce != null) && sforce.one ) 
+            {
+                // Salesforce1
+                document.getElementById('s1Div').style.display='block';
+            }
+            else 
+            {
+                // Salesforce Full Site
+                document.getElementById('sfDiv').style.display='block';
+                
+            }
+        }
+        catch(ex)
+        {
+            alert('exception: not for you');
+        }               
+    </script>
+-->
+</apex:page>

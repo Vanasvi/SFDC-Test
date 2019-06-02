@@ -1,0 +1,11 @@
+<apex:page controller="CRMG_RS.DashboardRefreshSidebar" showheader="false" standardstylesheets="true" action="{!DoRefresh}">
+
+<body style="background-color: #cfeef8;">
+
+<apex:outputLink value="/{!ScheduledReportsPrefix}/o" target="_new" >View Scheduled Reports</apex:outputLink>
+<br/>
+<apex:outputLink value="/{!ScheduledDashboardPrefix}/o" target="_new">View Scheduled Dashboards</apex:outputLink>
+
+</body>
+
+</apex:page>

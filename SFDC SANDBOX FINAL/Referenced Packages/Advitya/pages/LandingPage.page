@@ -1,0 +1,72 @@
+<apex:page sidebar="false" standardStylesheets="false" docType="html-5.0" tabStyle="Search_Merge2__tab" controller="advitya.LandingPageController">
+<head>
+<title>Welcome to Advitya</title>
+<apex:stylesheet value="{!$Resource.advitya__googlefonts}"/>
+<apex:stylesheet value="{!$Resource.advitya__landing_page_css}"/>
+<script>
+$(window).load(function(){
+    sforce.connection.sessionId = "{!$Api.Session_ID}";
+    var lp = sforce.connection.query("Select Id,advitya__hidepage__c From advitya__LpageSetting__c"); 
+    var record = lp.getArray("records");
+    if(record.length==0){
+        $(".landing-page-wrapper").css('display','block');
+        var rec=new sforce.SObject("advitya__LpageSetting__c");
+        rec.name="hide";
+        rec.advitya__HidePage__c=false;
+        var recordss=sforce.connection.create([rec]);
+    }
+    if(record[0]["advitya__HidePage__c"]=="true"){
+        backToHome();
+    }
+    else{
+        $(".landing-page-wrapper").css('display','block');
+    }
+});
+</script>
+</head>
+
+<body>
+<apex:form >
+<apex:actionFunction action="{!backToHome}" name="backToHome"/>
+<div class="landing-page-wrapper" style="display:none;">
+<div class="content-col">
+<h1>Managing<br/>
+<span class="bold-white">Duplicates</span> <span class="light-blue">Simplified</span>
+</h1>
+<p>Managing your duplicates has never been this simple and effective.
+Advitya can eliminate your duplicates in a few simple steps.</p>
+<br/>
+<a href="javascript:void(0);" class="get-started-btn" onclick="backToHome();">Get Started</a>
+
+  <div class="box">
+      <input type="checkbox" id="check" name="cb"/>
+      <label for="check"> Don’t show this again!</label>
+  </div>
+
+</div>
+</div>
+<script>
+    $("#check").click(function(){
+        sforce.connection.sessionId = "{!$Api.Session_ID}";
+        var qr = sforce.connection.query("Select Id,advitya__hidepage__c From advitya__LpageSetting__c"); 
+        var records = qr.getArray("records");
+        var obj = new sforce.SObject("advitya__LpageSetting__c");
+        obj.id=records[0]["Id"];    
+        if($(this).is(":checked")){
+            obj.advitya__HidePage__c=true;
+        }
+        else{
+            obj.advitya__HidePage__c=false;
+        }
+        var res=sforce.connection.update([obj]);
+    });
+</script>
+</apex:form>
+<apex:includeScript value="{!$Resource.advitya__Jquery_min}"/>
+<apex:includeScript value="/soap/ajax/32.0/connection.js"/>
+<apex:includeScript value="/soap/ajax/32.0/apex.js"/>
+<apex:includeScript value="{!$Resource.advitya__webfont}"/>
+</body>
+
+  
+</apex:page>

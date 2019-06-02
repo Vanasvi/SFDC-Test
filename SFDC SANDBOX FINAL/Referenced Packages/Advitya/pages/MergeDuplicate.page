@@ -1,0 +1,2226 @@
+<apex:page sidebar="false" controller="advitya.MergeDuplicateController1" standardStylesheets="true" docType="html-5.0"  tabStyle="Search_Merge2__tab">
+<apex:includeScript value="/soap/ajax/32.0/connection.js"/>
+<div class="popupBg" id="modify-loading" style="display:none;">
+    
+<img id="loading-img1" src="{!$Resource.LoadingImage}" style="height: 80px; width: 80px; position: fixed; opacity: 1; left: 47%; top: 47%;"/>
+<h1 style="position: fixed;font-size: 15px;color: #655959;top: 58%;text-align: center;width: 100%;">Please wait while Advitya is processing your data...</h1>
+
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Use to show the pop up when there in no active internet connection -->
+        <!-- The Modal -->
+        <div id="myModalnew1" class="modal1">
+            <!-- Modal content -->
+            <div class="modal-content1">
+                <span class="close">&times;</span>
+                 <p>Oops!! your network connection seems to be broken,please check your connection.</p>
+            </div>
+        </div>
+        <!-- Finish Code : Urvashi Shahi -->
+    
+</div>
+<div class="popupBg" id="prev-loading" style="display:none;">
+<img src="{!$Resource.LoadingImage}" style="height: 80px; width: 80px; position: fixed; opacity: 1; left: 47%; top: 47%;"/>
+
+<h1 style="position: fixed;font-size: 15px;color: #655959;top: 58%;text-align: center;width: 100%;">Please wait...</h1>
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Use to show the pop up when there in no active internet connection -->
+        <!-- The Modal -->
+        <div id="myModalnew2" class="modal1">
+            <!-- Modal content -->
+            <div class="modal-content1">
+                <span class="close">&times;</span>
+                 <p>Oops!! your network connection seems to be broken,please check your connection.</p>
+            </div>
+        </div>
+        
+        <!-- Finish Code : Urvashi Shahi -->
+</div>
+<apex:includeScript value="/soap/ajax/32.0/apex.js"/> 
+     
+<script type="text/javascript">
+        
+            
+        var ranASearch=false;
+        var previewRow='';
+        var fields=[];
+        var qOptVal='None';
+        var oOptVal='None';
+        var checkField='None';
+        var ma=false;
+        var queryNameSelected='';
+        var selectedQueryDescription='';        
+        var mID='';
+        var mCheck='';
+        var children='';
+        var prevVals=[];    
+        var intervalID='';
+        var fieldString="";
+        
+ // Change the selector if needed
+var $table = $('table.scroll'),
+    $bodyCells = $table.find('tbody tr:first').children(),
+    colWidth;
+
+// Adjust the width of thead cells when window resizes
+$(window).resize(function() {
+    // Get the tbody columns width array
+    colWidth = $bodyCells.map(function() {
+        return $(this).width();
+    }).get();
+    
+    // Set the width of thead columns
+    $table.find('thead tr').children().each(function(i, v) {
+        $(v).width(colWidth[i]);
+    });    
+}).resize(); // Trigger resize handler       
+
+    $(document).ready(function(){
+        $("#runJob").css({'pointer-events':'none','opacity':'0.5','background':'rgba(15,17,130,0)'});
+        $("#runObject").css({'pointer-events':'none','opacity':'0.5','background':'rgba(15,17,130,0)'});
+        $("[id*='objectList']").val("None");
+        flushMasters();
+    });
+
+    //method to check which radio button is selected and call the corresponding method 
+    function checkRadio(){
+        sforce.connection.sessionId = "{!$Api.Session_ID}";
+        var qr = sforce.connection.query("Select Id From advitya__RunningJobs__c"); 
+        var records = qr.getArray("records");
+        if(records.length==0){
+        if($("#job").is(':checked')){
+            if(qOptVal=="None")
+            {
+            $("#err1").show();
+            return;
+            }
+            $("#step-1-next").addClass("disable-np-btn");
+            $("#modify-loading").show();
+            //prepRunJob();
+            var ssQuery="select name,advitya__isValued__c from advitya__QueryStorage__c where name='"+qOptVal+"'";
+            var sqq = sforce.connection.query(ssQuery);
+            var ssRecords = sqq.getArray("records");
+            if(ssRecords[0]["advitya__isValued__c"].length==5){
+                prepRunJob();
+            }else{
+                runQueryWithValues();
+            }
+            ranASearch=true;
+            queryNameSelected=qOptVal;
+            var sQuery="select name,advitya__description__c from advitya__QueryStorage__c";
+            var sq = sforce.connection.query(sQuery);
+            var sRecords = sq.getArray("records");
+            for(s in sRecords){
+                if(sRecords[s]["Name"]==qOptVal){
+                    selectedQueryDescription=sRecords[s]["advitya__Description__c"];
+                    break;
+                }
+            }
+            $("#runObject").css({'pointer-events':'none','opacity':'0.5','background':'rgba(15,17,130,0)'});   
+             }
+        else if($("#object").is(':checked')){
+              if(oOptVal=="None"){
+                  $("#err2").show();
+                  return;
+              }
+              if(oOptVal=="Account" && $("[id*='personList']").length==1){
+                  if($("[id*='personList']").find("select").val()==""){
+                      $("#errPerson").show();
+                      return false;
+                  }    
+              }
+              $("#step-1-next").addClass("disable-np-btn");
+              $("#modify-loading").show();
+              selectsObject(oOptVal);
+              $("#runJob").css({'pointer-events':'none','opacity':'0.5','background':'rgba(15,17,130,0)'});
+            }
+        else{
+            $("#err11").css('display','block');
+        }
+       }
+       else{
+           alert("Another job is already running! You will get a notification email on completion. Only then you can run your job!");
+           return false;
+       }
+    }
+/*
+//checks if a field is selected for criteria and runs accordingly               
+             function runsearching(){
+                 var flag=0;
+                 var selectedFields=[];
+                 $("[class*='fc']").each(function(){
+                     if($(this).val()!="None")
+                         selectedFields.push($(this).val());
+                 });
+                 if($("[id*='mandatoryfield']").val()=="None"){
+                     $("#err42").css("display","block");
+                     return;
+                 }
+                 for(var i=0; i<selectedFields.length; i++){
+                     for(var j=i+1; j<selectedFields.length; j++){
+                         if(selectedFields[i]==selectedFields[j]){
+                             flag=1;
+                             $("#err4").css("display","block");
+                             return false;    
+                         }    
+                     }
+                 }
+                 fieldString="";
+                 $(".col-md-5").find("select").each(function(){
+                     if($(this).val()!="None"){
+                         if(fieldString=="")
+                             fieldString=$(this).val();
+                         else
+                             fieldString+=","+$(this).val();
+                     }
+                 });
+                 sforce.connection.sessionId = "{!$Api.Session_ID}";
+                 try{
+                     var qr =sforce.connection.query("Select "+fieldString+" From "+oOptVal); 
+                     var records = qr.getArray("records");
+                     if(flag==0){
+                         if($("[id*='enableVal']").is(":checked")){
+                             if(($("[id*='mandatoryField']").val()!="None" && $("[id*='mandatoryValue']").val().trim()=="") || ($("[id*='searchField2']").val()!="None" && $("[id*='searchValue2']").val().trim()=="") || ($("[id*='searchField3']").val()!="None" && $("[id*='searchValue3']").val().trim()=="") || ($("[id*='searchField4']").val()!="None" && $("[id*='searchValue4']").val().trim()=="") || ($("[id*='searchField5']").val()!="None" && $("[id*='searchValue5']").val().trim()=="")){
+                                 $("#err43").show();
+                                 return false;
+                             }else{
+                                 var searchString=$("[id*='mandatoryValue']").val();
+                                 if($("[id*='searchField2']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue2']").val();
+                                 if($("[id*='searchField3']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue3']").val();
+                                 if($("[id*='searchField4']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue4']").val();
+                                 if($("[id*='searchField5']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue5']").val();
+                                 if(searchString.includes("~")||searchString.includes(",")){
+                                     alert("You can't enter commas or tild in the search boxes!");
+                                     return false;   
+                                 }else{
+                                     $("#step-2-next").addClass("disable-np-btn");
+                                     $("#step-2-prev").addClass("disable-np-btn");
+                                     $("#modify-loading").show();
+                                     fetchWithValues(searchString);
+                                 }
+                             }       
+                         }else{
+                             $("#step-2-next").addClass("disable-np-btn");
+                             $("#step-2-prev").addClass("disable-np-btn");
+                             $("#modify-loading").show();
+                             runAggBatch();
+                         }
+                     }
+                 }catch(e){
+                     alert("You seem to have modified the schema of the object. Please refresh the page or go back & change your search criteria.");
+                 }
+             }
+*/
+//method to populate the details
+function showQueryDetails(qname){
+    var str="";
+    if(qname=="None")
+        str="";
+    else{
+        sforce.connection.sessionId = "{!$Api.Session_ID}";
+        var qrr = sforce.connection.query("Select Name,advitya__qObject__c,advitya__qcriteria__c,advitya__masterField__c,advitya__masterValue__c,advitya__addonFields__c From advitya__QueryStorage__c where name='"+qname+"'"); 
+        var queries = qrr.getArray("records");
+        str="Object:"+queries[0]["advitya__qObject__c"]+"---> Fields:"+queries[0]["advitya__qCriteria__c"]+"---> Master Criteria:"+queries[0]["advitya__masterField__c"]+"("+queries[0]["advitya__masterValue__c"]+")";
+        if(queries[0]["advitya__addonFields__c"]!=null)
+            str+=", Master Addons:"+queries[0]["advitya__addonFields__c"];
+    }
+    $(".desc-output").text(str);
+}
+    
+//temp method to call chooseMaster()  
+function callMaster(){
+     chooseMaster();
+ }
+function checkCriteria(){
+    sforce.connection.sessionId = "{!$Api.Session_ID}";
+    var qr = sforce.connection.query("Select Id From advitya__mJSON__c"); 
+    var records = qr.getArray("records");
+    if(records.length!=0){
+        clearInterval(intervalID);
+        fetch();
+    }    
+}
+
+function checkQueryRun(){
+    sforce.connection.sessionId = "{!$Api.Session_ID}";
+    var qr = sforce.connection.query("Select Id From advitya__mJSON__c"); 
+    var records = qr.getArray("records");
+    if(records.length!=0){
+        clearInterval(intervalID);
+        checkQueryResults();
+    }
+}
+
+function checkForNoRecords(noDupsPresent){
+    if(noDupsPresent=="true"){
+        $('#nodupsforquery').show(); 
+        $('.popupBg').hide(); 
+        $('#step-1-next').removeClass('disable-np-btn');
+    }else{
+        runJob();
+    }
+}
+
+function checkForNoRecordsWithValues(noDupsPresent){
+    if(noDupsPresent=="true"){
+        $('#nodupsforquery').show(); 
+        $('.popupBg').hide(); 
+        $('#step-1-next').removeClass('disable-np-btn');
+    }else{
+        chooseMaster();
+    }
+}
+
+ function showSchemaError(){
+     $("#modify-loading").hide();
+     $("#step-1-next").removeClass("disable-np-btn");
+     if(window.confirm("Oops! You seem to have modified or deleted object/field(s) from the schema in your Salesforce Org used by this saved search! This saved search can't be user further. Do you want to delete it?")){
+         var queryName=$("[id*='queryList']").val();
+         deleteModifiedSchemaQuery(queryName);
+     }
+ }                     
+</script>
+
+<html lang="en">
+<head>
+<title>Advitya</title>
+<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+
+
+<!-- Bootstrap -->
+<!-- Latest compiled and minified CSS  -->
+<apex:stylesheet value="{!URLFOR($Resource.advitya__bootstrap_min)}"/>
+<apex:stylesheet value="{!URLFOR($Resource.advitya__bootstrap_css)}"/>
+
+<!-- Optional theme  -->
+<apex:stylesheet value="{!URLFOR($Resource.advitya__bootstrap_theme_min)}"/>
+<!-- Latest compiled and minified JavaScript  -->
+
+<!-- custom CSS -->
+<apex:stylesheet value="{!URLFOR($Resource.advitya__custom_css)}"/>
+</head>
+<body>
+<!-- Added By :  Urvashi shahi -->
+        <!-- USE : Use to show the pop up when there in no active internet connection -->
+        <!-- The Modal -->
+        <div id="myModalnew" class="modal1">
+            <!-- Modal content -->
+            <div class="modal-content1">
+                <span class="close">&times;</span>
+                 <p>Oops!! your network connection seems to be broken,please check your connection.</p>
+            </div>
+        </div>
+        
+        <!-- Finish Code : Urvashi Shahi -->
+        
+        <div class="overlay"></div>
+        
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE :Css for No Internet connection Pop up>-->
+        <style>
+            /* The Modal (background) */
+            .modal1 {
+                display: none; /* Hidden by default */
+                position: fixed; /* Stay in place */
+                z-index: 99999999999999; /* Sit on top */
+                padding-top: 100px; /* Location of the box */
+                left: 0;
+                top: 0;
+                width: 100%; /* Full width */
+                height: 100%; /* Full height */
+                overflow: auto; /* Enable scroll if needed */
+                background-color: rgb(0,0,0); /* Fallback color */
+                background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            }
+            p {
+                margin: 20px 0 0 0;
+            }
+            
+            /* Modal Content */
+            .modal-content1 {
+                   background: #f3f3f3;
+                    margin-top: 12px;
+                    width: 40%;
+                    margin-left: 30%;
+                    padding: 15px 5px;
+                    font-size: 17px;
+                    text-align: center;
+                    border-radius: 5px;
+                    color: #888484;
+                    font-weight: 600;
+                    margin-bottom: -22px;
+                    line-height: 23px;
+            }
+            
+            /* The Close Button */
+            .close {
+                color: #151414;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                opacity: .5;
+                margin-top: -15px;
+            }
+            
+            .close:hover,
+            .close:focus {
+                color: #000;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            .noInternetcon {
+                width: 100%;
+                text-align: center;
+                color:FF0000;
+                text-shadow:1px 1px 1px red;
+                text-transform: uppercase;
+            }
+        </style>
+        <!-- Finish :Urvashi Shahi no internet connection pop up css  -->
+        
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Script use to check active internet connection with frequency of 1 second -->
+        <script>
+        
+            var nointernetmodal = document.getElementById('myModalnew');
+            var nointernetmodal1 = document.getElementById('myModalnew1');
+            var nointernetmodal2 = document.getElementById('myModalnew2');
+            
+
+            //Get the <span> element that closes the modal
+            var span = document.getElementsByClassName("close")[0];
+            var span1 = document.getElementsByClassName("close")[1];
+            var span2 = document.getElementsByClassName("close")[2];
+
+            var connectionMessage = "Internet Connected";
+            var noConnectionMessage = "No Internet Connection !!";
+            var online = '';
+            window.onload = checkInternetConnection;
+            function checkInternetConnection() {
+                //alert('Start Internet status >>'+status);
+                 isOnLine = navigator.onLine;
+                if (isOnLine) {
+                    //alert(connectionMessage);
+                } 
+                else {
+                  // document.getElementById("Label1").innerText = "No Inernet Connection !!";
+                    //document.getElementById("Label12").innerText = "No Inernet Connection !!";  
+                    //alert(noConnectionMessage);
+                }
+                var x = setInterval(function()
+                { 
+                    var status = navigator.onLine;
+
+                    if (status) {
+                        nointernetmodal.style.display = "none";
+                        nointernetmodal1.style.display = "none";
+                        nointernetmodal2.style.display = "none";
+                        console.log(connectionMessage);
+                        //alert(connectionMessage);
+                    }
+                    else {
+                        nointernetmodal.style.display = "block";
+                        nointernetmodal1.style.display = "block";
+                        nointernetmodal2.style.display = "block";
+                        //alert(noConnectionMessage);
+                        console.log(noConnectionMessage);
+                    }
+                }, 1000);
+            }
+            // When the user clicks on <span> (x), close the modal
+            span.onclick = function() {
+                nointernetmodal.style.display = "none";
+                nointernetmodal1.style.display = "none";
+                nointernetmodal2.style.display = "none";
+            }
+            span1.onclick = function() {
+                nointernetmodal.style.display = "none";
+                nointernetmodal1.style.display = "none";
+                nointernetmodal2.style.display = "none";
+            }
+            span2.onclick = function() {
+                nointernetmodal.style.display = "none";
+                nointernetmodal1.style.display = "none";
+                nointernetmodal2.style.display = "none";
+            }
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function(event) {
+                if (event.target == nointernetmodal || event.target == nointernetmodal1 || event.target == nointernetmodal2) {
+                    nointernetmodal.style.display = "none";
+                    nointernetmodal1.style.display = "none";
+                    nointernetmodal2.style.display = "none";
+                }
+            }
+        </script>
+
+<apex:form styleclass="form-horizontal" id="main-form">
+  <apex:outputPanel id="mainPanal"> 
+  <apex:actionFunction name="step4Previous" action="{!step4Previous}" status="rep_detail_sts" reRender="mainPanal" oncomplete="$('#modify-loading').hide(); $('#prev-loading').hide();"/>
+ <apex:actionFunction name="updateLists" action="{!updateLists}" reRender="prevMaster" oncomplete="setJS(); $('#modify-loading').hide();">
+                <apex:param id="mID" name="masterID" value=""/>
+                <apex:param id="mChecked" name="mChecked" value=""/>
+                <apex:param id="slaves" name="sChecked" value=""/>
+ </apex:actionFunction>
+ <apex:actionFunction action="{!flushMasters}" name="flushMasters" reRender=""/>
+
+ 
+<!-----------Master Preview Panel Start---------> 
+<div style="display:none;" id="prevDiv">
+<script>
+var characterCheckFlag=0;
+var changesMade=0;
+function closePopUp(){
+    if($(".Table").find(".errorMsg").length>0){
+        alert("You left an erroneous value on some field(s) of the master record. Please enter appropriate value(s) and update the master before closing!");
+        return false;
+    }
+    if(changesMade==1){
+        if(window.confirm("Do you want to save the changes made?")){
+            showLoader();
+        }
+        else{
+            var i=0;
+            $("[class*='inp']").each(function(){
+                if($(this).parent().find("div[class='inp']").length==1)
+                    $(this).find(".lookupInput").find("input").val(prevVals[i]);
+                else
+                    $(this).val(prevVals[i]);
+                i++;
+            });
+            $(".errorMsg").hide();
+            $(".Table").find("select").each(function(){
+                if($(this).val().length>40){
+                    if(characterCheckFlag==0)
+                        $(this).val("");
+                }
+            });
+            changesMade=0;
+            $(".Table").find("tbody").find("td").each(function(){
+                $(this).css('background','#fff');
+            });
+            $(".errorMsg").each(function(){
+                $(this).parent().find('input').val('');
+            });
+            $('body,html').css('overflow','scroll');
+            $('#prevDiv').css('display','none');
+        }
+        return false;        
+    }
+    else{
+        $(".errorMsg").each(function(){
+            $(this).parent().find('input').val('');
+        });
+        $('body,html').css('overflow','scroll');
+        $('#prevDiv').css('display','none'); 
+        characterCheckFlag=0;
+        return false;
+    }
+}
+
+function showLoader(){
+    $("[id='loading-img']").css('display','block');
+    $(".Table").css('opacity',0.5);
+    $("[id='prevDiv']").css('pointer-events','none');
+    saveDetails();
+}
+
+</script>
+<apex:actionFunction action="{!saveDetails}" name="saveDetails" reRender="prevMaster" oncomplete="if($('.Table').find('.errorMsg').length==0){$('.modify-notification').text('Master updated successfully!'); $('.modify-notification').css({'background':'#81bd63','border':'solid 2px #81bd63'}); $('.modify-notification').fadeIn(); } else { $('.modify-notification').text('Update Failed! Bad or Invalid value for one or more fields.'); $('.modify-notification').css({'background':'#ef403d','border':'solid 2px #ef403d'}); $('.modify-notification').fadeIn(); } prepForPreviewUpdate('{!master.id}');"/>
+<div class="modify-notification"></div>                       
+<apex:outputPanel styleClass="popupBgPrev" layout="block" rendered="true" id="prevMaster">
+            <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Use to show the pop up when there in no active internet connection -->
+        <!-- The Modal -->
+        <div id="myModalnew3" class="modal1">
+            <!-- Modal content -->
+            <div class="modal-content1">
+                <span class="close">&times;</span>
+                 <p>Oops!! your network connection seems to be broken,please check your connection.</p>
+            </div>
+        </div>
+        
+        <!-- Finish Code : Urvashi Shahi -->
+                   <script>
+                   
+                   $(function(){
+                    if($('.Table').find('.errorMsg').length==0){
+                        prevVals.length=0;
+                        $("[class='inp']").each(function(){
+                            if($(this).parent().find("div[class='inp']").length==1)
+                                prevVals.push($(this).parent().find(".lookupInput").find("input").val());
+                            else
+                                prevVals.push($(this).val());
+                        });
+                    }
+                    $("span").each(function(){
+                        if($(this).prop("class")=="lookupInput"){    
+                            var id1=$(this).parent().prop('id');
+                            var id2=$(this).parent().parent().parent().prop("id");
+                            var id3=$(this).parent().parent().prop("id");
+                            if(id1.startsWith("m")){
+                                $("."+id1.substring("1")).find(".copy-btn").hide();
+                            }
+                            if(id2.startsWith("m")){
+                                $("."+id2.substring("1")).find(".copy-btn").hide();
+                            }
+                            if(id3.startsWith("m")){
+                                $("."+id3.substring("1")).find(".copy-btn").hide();
+                            }
+                            }
+                    });
+                   });
+                    
+                    function cancelAll(){
+                        var i=0;
+                        $("[class*='inp']").each(function(){
+                            if($(this).parent().find("div[class='inp']").length==1){
+                                $(this).find(".lookupInput").find("input").val(prevVals[i]);
+                            }else
+                                $(this).val(prevVals[i]);
+                            i++;
+                        });
+                        $(".update-btn").hide();
+                        $(".errorMsg").remove();
+                        changesMade=0;
+                        $(".Table").find("tbody").find("td").each(function(){
+                            $(this).css('background','#fff');
+                        });
+                    }
+                    
+                    function prepForPreviewUpdate(rid){
+                        changesMade=0;
+                        setTimeout(function(){ $('.modify-notification').fadeOut(); },3000);
+                        var checkedForPreview='';
+                        var rowId=previewRow;
+                        rowId=rowId.replace('pr','');
+                        var lst=childrenCheck.split(',');
+                        if(mCheck==false){
+                            children=$mapChildren[mID];
+                            for(c in children){
+                                if($("#c"+rowId+"-"+c).is(":checked")){
+                                    if(checkedForPreview=="")
+                                        checkedForPreview=children[c]["Id"];
+                                    else
+                                        checkedForPreview+=","+children[c]["Id"];
+                                }
+                            }
+                        }
+                        updateLists(mID,mCheck,checkedForPreview);
+                    }
+                    
+                    function copyToMaster(btnI){
+                        var btnId=$(btnI).prop("name");
+                        var tempList=btnId.split("~");
+                        var valueToCopy=tempList[1];
+                        changesMade=1;
+                        $("#m"+tempList[0]).find(".inp").val(valueToCopy);
+                        $("#savemaster").css('display','block');
+                        $('#cancelmaster').css('display','block');
+                        $("."+tempList[0]).css('background','#fff');
+                        $(btnI).parent().css('background','rgba(0, 188, 212, 0.83)');
+                    
+                    }
+                    
+                    function removeSelection(idd){
+                        var rowNum=$(idd).parent().prop("id").substring("1");
+                        if(rowNum==''||rowNum==null){
+                            $(idd).parents("td").each(function(){
+                                if($(this).prop("id")!=''){
+                                    rowNum=$(this).prop("id").substring("1");
+                                }
+                            });
+                        }
+                        $("."+rowNum).css('background','#fff');
+                    }
+                    
+                    function hideErr(){
+                        $("[id*='nodups']").hide();
+                        $("#err4").hide();
+                        $("#err43").hide();
+                    }
+                    
+                   </script>
+                   <div class="header-div">
+                       <div class="wrapper-modify" style="float:left;"><span class="helpIcon"></span> <div class="tooltip-modify" style="padding:7px; width:182px;">This Modify page shows all the updatable fields corresponding to your selected Object. The rich text area fields and restricted (picklist) fields are not shown here due to some limitations.</div></div>
+                       <a id="savemaster" style="display: none;" href="javascript:void(0);" class="update-btn" onclick="showLoader()"><img src="{!$Resource.update_icon}"/> Update Master</a>
+                       <span style="color:white; position: fixed; margin-left: -8%; margin-top: 7px;">Modify View - {!objectLabel}</span>
+                       <span class="modify-popup-person-notification"><apex:outputText rendered="{!modifyPopupPersonNotification}">*You can't edit the Salutation, Lastname and FirstName fields on Person Accounts as limited by Salesforce.</apex:outputText></span>
+                       <a id="cancelmaster" href="javascript:void(0)" style="display:none; position: absolute; right: 19%;" class="update-btn" onclick="cancelAll()">Cancel</a>
+                       <a href="javascript:void(0);" onclick="closePopUp();" class="popup-button">X</a>
+                   </div>
+                   
+          <apex:outputPanel id="tablems" layout="block" styleClass="table-div" rendered="true">
+                   <img id="loading-img" src="{!$Resource.LoadingImage}" style="display:none; height: 90px; width: 90px; position: absolute; opacity: 1; z-index: 99999; left: 47%; top: 17%;"/>
+                   
+                   <script>
+                       $(function(){
+                           $(".Table").find("select").each(function(){
+                               if($(this).val().length>40){
+                                   if(characterCheckFlag==0)
+                                       $(this).val("");
+                               }
+                           });
+                       });
+                   </script>
+                   <table class="Table">
+                       <thead style="background:rgb(219, 223, 232);  font-size:12px;">
+                           <tr style="background: #8b989e; width:100%;">
+                               <th style="width:45px;"></th>
+                               <apex:repeat value="{!popupFields}" var="p">
+                                   <th>{!popupFields[p]}</th>
+                               </apex:repeat>
+                               <apex:repeat value="{!valMap}" var="v">
+                                   <th>{!valMap[v]}</th>
+                               </apex:repeat>
+                           </tr>
+                           <tr style="background:rgba(207, 236, 249, 0.5);">
+                               <td style="width:45px; padding: 5px 11px; height:50px;"><img style="width: 23px;" src="{!$Resource.tick_img}"/></td>
+                               <apex:repeat value="{!popupFields}" var="pp">
+                                   <td style="height: 50px; overflow: auto;">{!master[pp]}</td>
+                               </apex:repeat>
+                               <apex:variable value="{!0}" var="pr"/>
+                               <apex:repeat value="{!valMap}" var="vv">
+                                   <apex:variable value="{!pr+1}" var="pr"/>
+                                   <td id="m{!pr}" style="overflow:auto; height:50px;"><apex:inputField id="inpFld" onchange="removeSelection(this); changesMade=1; if($('#savemaster').css('display')=='none'){ $('#cancelmaster').css('display','block'); $('#savemaster').css('display','block');}" onkeypress="if($('#savemaster').css('display')=='none'){ $('#cancelmaster').css('display','block'); $('#savemaster').css('display','block');}" onfocus="if($('#savemaster').css('display')=='none'){ $('#cancelmaster').css('display','block'); $('#savemaster').css('display','block');}" onclick=" $('#cancelmaster').css('display','block'); $('#savemaster').css('display','block');" styleclass="inp" value="{!master[vv]}"/></td>
+                               </apex:repeat>
+                           </tr>
+                       </thead>
+                       <tbody>
+                           <apex:variable value="{!0}" var="vr"/>
+                           <apex:repeat value="{!currentSlaves}" var="s">
+                               <apex:variable value="{!vr+1}" var="vr"/>
+                               <tr style="opacity:0.5; background: #fafafa;">
+                                   <td style="width:45px; padding: 5px 11px;"><img style="width: 23px;" src="{!$Resource.cross_img}"/></td>
+                                   <apex:repeat value="{!popupFields}" var="ppp">
+                                       <td><a href="#" class="optt" title="{!s[ppp]}">{!s[ppp]}</a></td>
+                                   </apex:repeat>
+                                   <apex:variable var="vrc" value="{!0}"/>
+                                   <apex:repeat value="{!valMap}" var="vvv">
+                                       <apex:variable var="vrc" value="{!vrc+1}"/>
+                                       <td class="{!vrc}"><a href="#" class="optt" title="{!s[vvv]}"><apex:outputField value="{!s[vvv]}"/></a><input id="{!vrc}~{!s[vvv]}" name="{!vrc}~{!s[vvv]}" type="button" class="copy-btn" onclick="copyToMaster(this)" value="Copy" title="Copy to Master"/></td>
+                                   </apex:repeat>
+                               </tr>
+                           </apex:repeat>
+                       </tbody>
+                   </table>
+            </apex:outputPanel> 
+</apex:outputPanel>
+</div>
+
+
+
+<!-----------Master Preview Panel End---------> 
+  <apex:actionFunction name="chooseMaster" action="{!chooseMaster}" reRender="" oncomplete="if('{!notfound}'==1){if(window.confirm('There is no record matching your selected criteria. We have selected master record by removing your additional filters, do you want to proceed with the merging process?')){ loadStepFour(); }else{step4Previous();}}else{loadStepFour();}">
+      <apex:param name="addons" value=""/>
+  </apex:actionFunction>
+  <apex:actionFunction name="deleteModifiedSchemaQuery" action="{!deleteModifiedSchemaQuery}" reRender="" oncomplete="alert('The Saved Search has been deleted successfully!'); window.location.reload();">
+      <apex:param name="malformedQuery" value=""/>
+  </apex:actionFunction>   
+     <apex:actionFunction name="prepRunJob" action="{!prepForQueryRun}" reRender="" oncomplete="if('{!isSchemaChanged}'.length==5){intervalID=setInterval(checkQueryRun,4000);}else{ showSchemaError(); }"/>
+                
+     <apex:actionFunction name="loadStepFour" action="{!loadStepFour}" reRender="mainPanal" oncomplete="$('#modify-loading').hide();"/>    
+        <div class="fluid-container" style="position:relative;">
+ <!---------------------------------------------------------Step 1-------------------------------------------------------------------------------->       
+            
+            <apex:outputPanel rendered="{!showCriteriasPanal}">    
+                <apex:actionFunction name="renderPersonList" action="{!renderPersonList}" reRender="objectpanel" oncomplete="$('#prev-loading').hide();"/>            
+                <apex:actionFunction name="selectsObject" action="{!selectsObject}" reRender="mainPanal" oncomplete="$('#modify-loading').hide();">
+                        <apex:param id="obj" name="sObj" value=""/>
+                </apex:actionFunction>
+                <apex:actionFunction name="checkQueryResults" action="{!checkQueryResults}" reRender="" oncomplete="checkForNoRecords('{!noDupsPresentForQuery}');"/>
+                <apex:actionFunction name="runJob" action="{!runQuery}" reRender="mainPanal" oncomplete="chooseMaster()"/>
+                <apex:actionFunction name="runQueryWithValues" action="{!runQueryWithValues}" reRender="" oncomplete="checkForNoRecordsWithValues('{!noDupsPresentForQuery}')"/>
+                <apex:actionFunction name="clearJobTab" action="{!clearJobTab}" reRender="jobpanel" oncomplete="$('#prev-loading').hide();"/>
+                <apex:actionFunction name="clearObjectTab" action="{!clearObjectTab}" reRender="objectpanel" oncomplete="$('#prev-loading').hide();"/>
+                <div class="row steps-wrapper">
+                  <div class="step-circle-box">
+                      <div class="arrow-wrap">
+                        <h2>Step 1</h2>
+                        <span class="step-arrow"></span>
+                      </div>
+                  </div>
+                  <div class="text-wrpper">
+                    <h3>Select Saved Searches/Object</h3>
+                    <p>Panels for object selection and saved search selection are given below. Please select one from them to proceed.</p>
+                  </div>
+                </div>
+                  <form class="form-horizontal">
+                  
+                    <div class="wrapper">
+                       Need Help <span class="helpIcon"></span>
+                        <div style="padding:7px;" class="tooltip">Select an existing Saved search or build a new duplicate search criteria. Clicking on 'Next' by selecting an existing saved search will prompt you directly to Step 4 (Duplicate Records) else you'll be prompted to Step 2 (Selecting Duplicate Criteria).</div>
+                    </div>
+                    <div id="nodupsforquery" class="row col-md-12 no-dups-message" style="display:none;">
+                        There are no duplicates present on your selected saved search. Please select a different saved search for searching duplicates. 
+                    </div>
+                    <div class="row custom-col-green" style="disabled=true;">
+                    <!-- -------------RUN JOB-------------- -->
+                        <div  class="col-md-5" style="margin-left:3%; padding-left: 0px;padding-right: 0px;">
+                        <span class="radioText">
+                        <input id="job" name="saved search" type="radio" onclick="qOptVal='None'; oOptVal='None';$('#err11').css('display','none'); $('#prev-loading').show(); clearObjectTab(); $('#runJob').css({'pointer-events':'auto','opacity':'initial','background':'initial'}); $('#runObject').css({'pointer-events':'none','opacity':'0.5','background':'rgba(15, 17, 130, 0);'});$('#err2').hide(); "/>
+                        <a style="color: #1797c0;text-decoration: none;" href="javascript:void(0)" onclick="qOptVal='None'; oOptVal='None'; $('#job').prop('checked',true); $('#prev-loading').show(); $('#object').prop('checked',false); $('#err11').css('display','none'); clearObjectTab(); $('#runJob').css({'pointer-events':'auto','opacity':'initial','background':'initial'}); $('#runObject').css({'pointer-events':'none','opacity':'0.5','background':'rgba(15, 17, 130, 0);'});">Select from Saved Searches</a>
+                        </span>
+                        <div id="runJob" style="pointer-events: auto;opacity: initial;background: initial;">
+                        <apex:outputPanel id="jobpanel">
+                        <p>Select from recent saved queries</p>
+                              <span class="menu">
+                                 <apex:selectList id="queryList" onchange="$('#err1').hide(); showQueryDetails(this.value); qOptVal=this.value; $('#nodupsforquery').hide();"  styleClass="select-menu" value="{!selectedQuery}" size="1" style="padding-left: 10px; padding-right: 58px;">     
+                                     <apex:selectOptions value="{!querynames}"/> 
+                                 </apex:selectList>              
+                              </span>
+                              
+                              <div id="err1" style="display:none">
+                                  <apex:outputPanel styleClass="errorMessage" style="margin-top: 16px; display:block;">
+                              <div>
+                               Please select a saved search to proceed!
+                           </div>
+                           </apex:outputPanel>
+                           </div>
+                               <p>Criteria</p>
+                              <div class="desc-output">
+                              <apex:outputText style="font-size: 14px;" value="" id="Quer"></apex:outputText>
+                              </div>
+                        </apex:outputPanel>
+                        </div>
+                        </div>
+                    <!-- -------------END-------------- -->
+                        <div class="col-md-2" style="width: 2%;margin-left: 4%;margin-right: 4%;">
+                             <div class="v-line">
+                                <div class="or-icon">OR</div>
+                              </div>
+                        </div> 
+                        
+                      <!-- -------------SELECT OBJECT-------------- -->
+                        <div class="col-md-5">
+                                <span class="radioText">
+                                   <input id="object" name="saved search" type="radio" onclick="qOptVal='None'; oOptVal='None'; $('#err1').hide(); $('#err11').css('display','none');$('#prev-loading').show(); clearJobTab(); $('#runObject').css({'pointer-events':'auto','opacity':'initial','background':'initial'}); $('#runJob').css({'pointer-events':'none','opacity':'0.5','background':'rgba(15, 17, 130, 0);'}); $('#nodupsforquery').hide();"/> 
+                                   <a style="color: #1797c0;text-decoration: none;" href="javascript:void(0)" onclick="qOptVal='None'; oOptVal='None'; $('#object').prop('checked',true);$('#prev-loading').show(); $('#job').prop('checked',false); $('#err11').css('display','none'); clearJobTab(); $('#runObject').css({'pointer-events':'auto','opacity':'initial','background':'initial'}); $('#runJob').css({'pointer-events':'none','opacity':'0.5','background':'rgba(15, 17, 130, 0);'}); $('#nodupsforquery').hide();">Select an Object</a>
+                                 </span>
+                                 <div id="runObject" style="pointer-events: none; opacity: 0.5;background: rgba(15, 17, 130, 0);">   
+                                <apex:outputPanel id="objectpanel">
+                                <p>Select an object for duplicate search</p> 
+                                <i style="font-weight: 600;font-size: 12px;display: block;padding-bottom: 5px;"> (The dropdown shows only the values on which you have sufficient permissions to modify.)</i>
+                                <div style="display:block;">
+                                    <span class="menu">                           
+                                        <apex:selectList id="objectList" onchange="$('#err2').hide(); oOptVal=this.value; $('#prev-loading').show(); renderPersonList();"  styleClass="select-menu" style="padding-left: 10px;" value="{!s}" size="1" >     
+                                            <apex:selectOptions value="{!Objects}"></apex:selectOptions>
+                                        </apex:selectList>
+                                   </span>
+                               </div>
+                               <apex:outputPanel id="personList" styleClass="menu" rendered="{!personAccountPresent}">
+                                    <apex:selectList id="person" value="{!accountType}" rendered="{!personAccountPresent}" styleClass="select-menu" style="padding-left: 10px; margin-top: 12px;" size="1" onchange="$('#errPerson').hide();">
+                                        <apex:selectOption itemLabel="Select Account Type" itemValue=""/>
+                                        <apex:selectOption itemLabel="Business Account" itemValue="business"/>
+                                        <apex:selectOption itemLabel="Person Account" itemValue="person"/>
+                                    </apex:selectList>
+                               </apex:outputPanel> 
+                               <div id="err2" style="display:none">
+                               <apex:outputPanel id="s1ObjError" styleClass="errorMessage" style="margin-top: 16px;display:block;" >
+                               <div>
+                               Please select an object to proceed!
+                           </div>
+                           </apex:outputPanel>
+                           </div>
+                           <div id="errPerson" style="display:none">
+                               <apex:outputPanel id="s1ObjError2" styleClass="errorMessage" style="margin-top: 16px;display:block;" >
+                               <div>
+                               Please select an Account Type to proceed!
+                           </div>
+                           </apex:outputPanel>
+                           </div>
+                           </apex:outputPanel>
+                           </div>
+                           </div>
+                           </div>
+                     
+                    <div id="outerDiv" class="row" style="width:100%; margin-left:0;">
+                     <div id="err11" style="float:left; display:none;">
+                               <div class="errorMessage" style="margin-top: 0px; width: 254px; margin-left: 535px;display:block;">
+                               <div>
+                           Please select an option to proceed!
+                           </div>
+                           </div>
+                           </div>
+                        <div id="step1Next" style="float: right;">
+                            <ul class="pagerNew" style="padding: 0px; margin: 0px; margin-bottom:15px;">
+                                <li style="margin-right: 0em;"><a id="step-1-next" href="javascript:void(0)" onclick=" checkRadio(); ">Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a></li>
+                            </ul>
+                            
+                        </div>
+                    </div>
+                </form>
+            </apex:outputPanel>
+            
+ <!---------------------------------------------------------Step 2-------------------------------------------------------------------------------->   
+                     
+            
+            <apex:outputPanel rendered="{!step2}" >
+            <script>
+                $(function(){
+                    enableValuedSearch();
+                    $(".select-value-text").keypress(function(e){
+                        if(e.keyCode=="126"||e.keyCode=="44"||(e.keyCode=="32"&&$(this).val().length==0)){
+                            e.preventDefault();
+                        }
+                    });
+                });
+                
+                function enableValuedSearch(){
+                    if($("[id*='enableVal']").is(":checked")){
+                        $("#valuedSearchDiv").removeClass("disable-div");
+                    }else{
+                        $("#valuedSearchDiv").addClass("disable-div");
+                        $(".select-value-text").val('');
+                        $("#err43").hide();
+                    }
+                }
+                
+                //checks if a field is selected for criteria and runs accordingly               
+                function runsearching(){
+                 var flag=0;
+                 var selectedFields=[];
+                 $("[class*='fc']").each(function(){
+                     if($(this).val()!="None")
+                         selectedFields.push($(this).val());
+                 });
+                 if($("[id*='mandatoryfield']").val()=="None"){
+                     $("#err42").css("display","block");
+                     return;
+                 }
+                 for(var i=0; i<selectedFields.length; i++){
+                     for(var j=i+1; j<selectedFields.length; j++){
+                         if(selectedFields[i]==selectedFields[j]){
+                             flag=1;
+                             $("#err4").css("display","block");
+                             return false;    
+                         }    
+                     }
+                 }
+                 fieldString="";
+                 $(".col-md-5").find("select").each(function(){
+                     if($(this).val()!="None"){
+                         if(fieldString=="")
+                             fieldString=$(this).val();
+                         else
+                             fieldString+=","+$(this).val();
+                     }
+                 });
+                 sforce.connection.sessionId = "{!$Api.Session_ID}";
+                 try{
+                     var qr =sforce.connection.query("Select "+fieldString+" From "+oOptVal); 
+                     var records = qr.getArray("records");
+                     if(flag==0){
+                         if($("[id*='enableVal']").is(":checked")){
+                             if(($("[id*='mandatoryfield']").val()!="None" && $("[id*='mandatoryValue']").val().trim()=="") || ($("[id*='searchField2']").val()!="None" && $("[id*='searchValue2']").val().trim()=="") || ($("[id*='searchField3']").val()!="None" && $("[id*='searchValue3']").val().trim()=="") || ($("[id*='searchField4']").val()!="None" && $("[id*='searchValue4']").val().trim()=="") || ($("[id*='searchField5']").val()!="None" && $("[id*='searchValue5']").val().trim()=="")){
+                                 $("#err43").show();
+                                 return false;
+                             }else{
+                                 var searchString=$("[id*='mandatoryValue']").val();
+                                 if($("[id*='searchField2']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue2']").val();
+                                 if($("[id*='searchField3']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue3']").val();
+                                 if($("[id*='searchField4']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue4']").val();
+                                 if($("[id*='searchField5']").val()!="None")
+                                     searchString+="a-d-v"+$("[id*='searchValue5']").val();
+                                 if(searchString.includes("~")||searchString.includes(",")){
+                                     alert("You can't enter commas or tild in the search boxes!");
+                                     return false;   
+                                 }else{
+                                     $("#step-2-next").addClass("disable-np-btn");
+                                     $("#step-2-prev").addClass("disable-np-btn");
+                                     $("#modify-loading").show();
+                                     fetchWithValues(searchString);
+                                 }
+                             }
+                         }else{
+                             $("#step-2-next").addClass("disable-np-btn");
+                             $("#step-2-prev").addClass("disable-np-btn");
+                             $("#modify-loading").show();
+                             runAggBatch();
+                         }
+                     }
+                 }catch(e){
+                     alert("You seem to have modified the schema of the object. Please refresh the page or go back & change your search criteria.");
+                 }
+                }
+                
+                function showError(err){
+                    if(err!="None")
+                        $("[id*='nodups']").show();
+                }
+            </script>
+            <div style="height: 30px;position: absolute; right: 2%; top: 50.5%; width: 24%; margin-top: -14px;">
+                <apex:outputPanel id="errorPanal">
+                    <apex:messages styleclass="alert alert-danger" style="list-style: none;font-size: 13px;" />
+                </apex:outputPanel>
+            </div>
+                <apex:actionFunction name="runAggBatch" action="{!runAggBatch}" reRender="" oncomplete="intervalID=setInterval(checkCriteria,5000);"/>
+                <apex:actionFunction name="step2Previous" action="{!step2Previous}" status="rep_detail_sts" reRender="mainPanal" oncomplete="$('#prev-loading').hide();"/>
+                
+                <apex:actionFunction name="fetch" action="{!fetch}" reRender="mainPanal" status="rep_detail_sts" oncomplete="$('#modify-loading').hide();"/>
+                <apex:actionFunction name="hideErrorMessage" action="{!hideErrorMessage}" reRender="mainPanal"/>
+                <apex:actionFunction name="fetchWithValues" action="{!fetchWithValues}" reRender="mainPanal" oncomplete="$('#modify-loading').hide(); showError('{!errorString}');">
+                    <apex:param name="searchValues" value=""/>
+                </apex:actionFunction>
+                <apex:outputPanel id="Selectcriteria">
+                    <apex:variable var="i" value="{!0}"/>
+                      
+                 <div class="row steps-wrapper">
+                  <div class="step-circle-box">
+                      <div class="arrow-wrap">
+                        <h2>Step 2</h2>
+                        <span class="step-arrow"></span>
+                      </div>
+                  </div>
+                  <div class="text-wrpper">
+                    <h3>Create Filters</h3>
+                    <p>Choose upto five fields of the selected object to create the filter criterion.</p>
+                  </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 queryText" >
+                        Object: {!objectLabel} 
+                    </div>
+                </div>
+                <apex:outputPanel id="nodups" styleClass="row col-md-12 no-dups-message" rendered="{!noDupsPresent}">
+                        There are no duplicates present on your selected criteria/value(s). Please select a different set of criteria/value(s) for searching duplicates.
+                </apex:outputPanel>
+                    <div class="row custom-col-green">
+                         <div class="wrapper" style="position: absolute; right: 8px;">
+                             Need Help<span class="helpIcon"></span>
+                             <div style="padding:7px; width:182px;" class="tooltip">The picklist will show only updateable and groupable fields with data type as String(Text/Text Area/Long Text Area), Phone, Reference (Master Detail/Lookup), Double, Email and URL.</div>
+                         </div>
+                         <div class="col-md-5" style="margin-left: 9%; padding-right: 14px;">  
+                            <label class="control-label select-object" rendered="{!if(i==0,true,false)}">
+                                <apex:outputText style="color:#1797c0;" value="Select Duplicate Criteria" />
+                            </label>
+                            <p>Select up to five fields for creating duplicate criteria</p>
+                            <i style="font-weight: 600;font-size: 12px;display: block;padding-bottom: 5px;"> (The dropdown shows only the values on which you have sufficient permissions to modify.)</i>    
+                        <div class="col-md-7 select-option-div" style="border-left: solid 4px red;">                                 
+                                    <span class="menu"> 
+                                        <apex:selectList id="mandatoryfield" styleClass="select-menu fc" style="padding-left: 14px;" value="{!field1}" size="1" onchange=" hideErr(); $('#err42').hide(); checkField=this.value;">
+                                            <apex:selectOptions value="{!DuplicateFields}"/>
+                                        </apex:selectList>
+                                    </span>
+                        </div>
+                        <div class="col-md-7 select-option-div" style="padding-left: 0px; margin-bottom: 10px;">                                
+                                    <span class="menu"> 
+                                        <apex:selectList id="searchField2" styleClass="select-menu fc" style="padding-left: 14px;" value="{!field2}" size="1" onchange="hideErr(); checkField=this.value;">
+                                            <apex:selectOptions value="{!DuplicateFields}"/>
+                                        </apex:selectList>
+                                    </span>
+                        </div>
+                        <div class="col-md-7 select-option-div" style="padding-left: 0px; margin-bottom: 10px;">                                
+                                    <span class="menu"> 
+                                        <apex:selectList id="searchField3" styleClass="select-menu fc" style="padding-left: 14px;" value="{!field3}" size="1" onchange="hideErr(); checkField=this.value;">
+                                            <apex:selectOptions value="{!DuplicateFields}"/>
+                                        </apex:selectList>
+                                    </span>
+                        </div>
+                        <div class="col-md-7 select-option-div" style="padding-left: 0px; margin-bottom: 10px;">                                
+                                    <span class="menu"> 
+                                        <apex:selectList id="searchField4" styleClass="select-menu fc" style="padding-left: 14px;" value="{!field4}" size="1" onchange="hideErr(); checkField=this.value;">
+                                            <apex:selectOptions value="{!DuplicateFields}"/>
+                                        </apex:selectList>
+                                    </span>
+                        </div>
+                        <div class="col-md-7 select-option-div" style="padding-left: 0px; margin-bottom: 10px;">                                
+                                    <span class="menu"> 
+                                        <apex:selectList id="searchField5" styleClass="select-menu fc" style="padding-left: 14px;" value="{!field5}" size="1" onchange="hideErr(); checkField=this.value;">
+                                            <apex:selectOptions value="{!DuplicateFields}"/>
+                                        </apex:selectList>
+                                    </span>
+                        </div>
+                        <div id="err42" class="col-md-7 errorMessage" style="width: 48%">
+                          Please select the mandatory field!
+                        </div>
+                        <div id="err4" class="col-md-7 errorMessage" style="width: 48%">
+                            Please select unique fields.
+                        </div>
+                      </div>
+                      
+                      <div style="margin-top: 7%; float: left;">
+                          <div id="arrow-mapping">
+                              <span class="step-2-arrow"><img src="{!$Resource.step_two_arrow}"/></span>
+                              <span class="step-2-arrow"><img src="{!$Resource.step_two_arrow}"/></span>
+                              <span class="step-2-arrow"><img src="{!$Resource.step_two_arrow}"/></span>
+                              <span class="step-2-arrow"><img src="{!$Resource.step_two_arrow}"/></span>
+                              <span class="step-2-arrow"><img src="{!$Resource.step_two_arrow}"/></span>
+                          </div>
+                      </div>
+                      
+                      <div class="col-md-5" style="padding-left: 31px;">
+                          <div class="row">
+                              <div class="col-md-12">
+                                  <label class="control-label select-object" rendered="{!if(i==0,true,false)}">
+                                        <apex:inputCheckbox id="enableVal" onclick="enableValuedSearch()" value="{!valueSearchEnabled}"/><apex:outputText style="color:#1797c0; padding-left:9px;" value="Enable Value based Search" />
+                                  </label>
+                              </div>
+                          </div>
+                          <div id="valuedSearchDiv" class="row disable-div">
+                              <div class="col-md-11">
+                                  <p>Enter a value corresponding to the chosen fields. This will be an 'equals to' search.</p>
+                              </div>
+                              <div class="col-md-11 select option-div">
+                                  <apex:inputText id="mandatoryValue" styleClass="select-value-text" value="{!valueString1}" onclick="$('#err43').hide();"/>
+                              </div>
+                              <div class="col-md-11 select option-div">
+                                  <apex:inputText id="searchValue2" styleClass="select-value-text" value="{!valueString2}" onclick="$('#err43').hide();"/>
+                              </div>
+                              <div class="col-md-11 select option-div">
+                                  <apex:inputText id="searchValue3" styleClass="select-value-text" value="{!valueString3}" onclick="$('#err43').hide();"/>
+                              </div>
+                              <div class="col-md-11 select option-div">
+                                  <apex:inputText id="searchValue4" styleClass="select-value-text" value="{!valueString4}" onclick="$('#err43').hide();"/>
+                              </div>
+                              <div class="col-md-11 select option-div">
+                                  <apex:inputText id="searchValue5" styleClass="select-value-text" value="{!valueString5}" onclick="$('#err43').hide();"/>
+                              </div>
+                              <div id="err43" class="col-md-11 errorMessage" style="width:49%; margin-left:3%;">
+                                  Please enter the value(s) to search!
+                              </div>
+                          </div>
+                      </div>
+                      
+                      </div>   
+                           
+                      <div class="row" style="width:100%; margin-left:0;">                             
+                         <div style="float: left">
+                            <ul class="pagerNew" style="padding: 0px; margin: 0px;">
+                                <li><a id="step-2-prev" href="/apex/advitya__MergeDuplicate" onclick="$('#prev-loading').show(); step2Previous();"><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev</a></li>
+                            </ul>
+                            <p style="font-size: 12px; color:#616161;white-space: nowrap;width: 84%; text-align: right;font-weight: 600;">Review selected object</p>
+                        </div>  
+                        <div style="float: right">
+                            <ul class="pagerNew" style="margin: 0px;">
+                                <li style="margin-right: 0; cursor:pointer;"><a id="step-2-next" href="javascript:void(0);" onclick="runsearching(); ">Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a></li>
+                            </ul>
+                            <p style="font-size: 12px; color:#616161;white-space: nowrap; text-align: right;font-weight: 600;">Choose the master</p>
+                        </div> 
+                      </div>  
+                    
+                  </apex:outputPanel>
+            </apex:outputPanel>
+            
+           
+<!--------------------------------------------------------------Step 3----------------------------------------------------------------------------->
+            
+           <apex:outputPanel rendered="{!step3}">
+                
+              
+               <apex:actionFunction name="step3Previous" action="{!step3Previous}" status="rep_detail_sts" reRender="mainPanal"  oncomplete="$('#prev-loading').hide();"/>
+               <script>
+               $(function(){
+                   if(!($("#enableAddon").is(":checked"))){
+                       $("[id*='addon1']").val("None");
+                       $("[id*='addon2']").val("None");
+                       $("[id*='addon3']").val("None");
+                       $("[id*='addonval1']").val("not null");
+                       $("[id*='addonval2']").val("not null");
+                       $("[id*='addonval3']").val("not null");
+                   }
+                   $("#enableAddon").click(function(){
+                        if($(this).is(":checked")){
+                            $("#addonfilter").css("opacity","1");
+                            $("#addonfilter").css("pointer-events","all");
+                        }
+                        else{
+                            $("#addonfilter").css("opacity","0.4");
+                            $("#addonfilter").css("pointer-events","none");
+                            $("[id*='addon1']").val("None");
+                            $("[id*='addon2']").val("None");
+                            $("[id*='addon3']").val("None");
+                            $("[id*='addonval1']").val("not null");
+                            $("[id*='addonval2']").val("not null");
+                            $("[id*='addonval3']").val("not null");
+                            $("#err9").css("display","none");
+                        }
+                    });
+               });
+               
+               function validateAddons(){
+                   var addonFields="";
+                   if($("#enableAddon").is(":checked")){
+                       var field1=$("[id*='addon1']").val();
+                       var field2=$("[id*='addon2']").val();
+                       var field3=$("[id*='addon3']").val();
+                       var value1=$("[id*='addonval1']").val();
+                       var value2=$("[id*='addonval2']").val();
+                       var value3=$("[id*='addonval3']").val();
+                       var addonlist=[];
+                       if(field1!="None"){
+                           addonlist.push(field1+";"+value1);
+                           fieldString=field1;
+                       }             
+                       if(field2!="None"){
+                           addonlist.push(field2+";"+value2);             
+                           fieldString+=","+field2;
+                       }
+                       if(field3!="None"){
+                           addonlist.push(field3+";"+value3);
+                           fieldString+=","+field3;
+                       }
+                       if(field1=="None"){
+                           $("#err9").find(".errorMessage").text("Please select the mandatory field to proceed!");
+                           $("#err9").css("display","block");
+                           return;
+                       }
+                       else if((field1=="None" && field2!="None" && field3!="None")||(field1!="None" && field2=="None" && field3!="None")||(field1!="None" && field2!="None" && field3=="None")){
+                           if((field2==field3)||(field1==field3)||(field1==field2)){
+                               $("#err9").find(".errorMessage").text("Please select unique fields!");
+                               $("#err9").css("display","block");
+                               return;
+                           }
+                       }
+                       else if((field1!="None" && field2=="None" && field3=="None")||(field1=="None" && field2!="None" && field3=="None")||(field1=="None" && field2=="None" && field3!="None")){
+                       }
+                       else{
+                           if((field2==field3)||(field1==field3)||(field1==field2)||(field1==field2==field3)){
+                               $("#err9").find(".errorMessage").text("Please select unique fields!");
+                               $("#err9").css("display","block");
+                               return;
+                           }
+                       }
+                       for(a in addonlist){
+                           if(addonFields=="")
+                               addonFields=addonlist[a];
+                           else
+                               addonFields+=","+addonlist[a];
+                       }    
+                  }
+                  sforce.connection.sessionId = "{!$Api.Session_ID}";
+                  try{
+                      var qr =sforce.connection.query("Select "+fieldString+" From "+oOptVal); 
+                      var records = qr.getArray("records");
+                      $("#modify-loading").show();
+                      $("#step-3-next").addClass("disable-np-btn");
+                      $("#step-3-prev").addClass("disable-np-btn");
+                      chooseMaster(addonFields);
+                  }catch(e){
+                      alert("You seem to have modified the schema of the object. Please refresh the page or go back & change your search criteria.");
+                  }
+               }
+               
+              
+               </script>
+               <div class="row steps-wrapper">
+                  <div class="step-circle-box">
+                      <div class="arrow-wrap">
+                        <h2>Step 3</h2>
+                        <span class="step-arrow"></span>
+                      </div>
+                  </div>
+                  <div class="text-wrpper">
+                    <h3>Set Master Record</h3>
+                    <p>Create the filters for setting the master record.</p>
+                  </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-11 queryText" >
+                        Object: {!objectLabel} --> Duplicate Criteria: {!showCriteria}
+                    </div>
+                    <div class="wrapper" style="margin-right: 17px;">
+                       Need Help <span class="helpIcon"></span>
+                        <div class="tooltip" style="padding: 7px; text-align:justify;">Select the master record criteria with or without the right hand side selection. Clicking the checkbox on the right will let you choose up to 3 fields (first field mandatory) to be checked for having some value and will work in conjunction ('AND' logic) with your left hand selection.</div>
+                    </div>
+                </div>
+                
+                <div class="row custom-col-green" style="padding-top:16px;">
+                    <div class="col-md-5" style="text-align: center;">
+                        <label class="control-label select-object" style="color:#1797c0;">Set Master Record </label>
+                        <p style="padding-bottom: 2%;">Define the criteria for the master record.</p>
+                        <div class="row">
+                            <div class="col-xs-8 col-md-offset-2" style="margin-bottom: 5%;">
+                                <span class="menu">                       
+                                    <apex:selectList styleClass="select-menu" style="padding-left: 15px;" value="{!masterFieldName}" size="1">
+                                        <apex:selectOption itemValue="CreatedDate" itemLabel="Created Date" />
+                                        <apex:selectOption itemValue="LastModifiedDate" itemLabel="Last Modified Date"/>                                                  
+                                   </apex:selectList>
+                               </span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-8 col-md-offset-2">
+                                <span class="menu">
+                                    <apex:selectList styleClass="select-menu" style="padding-left: 15px;" value="{!masterFieldValue}" size="1">
+                                        <apex:selectOption itemValue="Latest" itemLabel="Latest"/>
+                                        <apex:selectOption itemValue="Oldest" itemLabel="Oldest" />
+                                   </apex:selectList>
+                               </span>
+                            </div>           
+                        </div>        
+                    </div>
+                    <div class="col-md-2" style="width: 2%;margin-left: 4%;margin-right: 4%;">
+                        <div class="v-line">
+                            <div class="or-icon" style="padding: 10px 6px;">AND</div>
+                        </div>
+                    </div> 
+                    <input type="checkbox" class="enableaddoncheck" id="enableAddon"/>
+                    <div id="addonfilter" class="col-md-5" style="text-align: center; opacity:0.4; pointer-events:none;">
+                        <label class="control-label select-object" style="color:#1797c0;">Additional Master Filters </label>
+                        <p style="padding-bottom: 2%;">Select upto three fields to be checked for 'Is Blank' or 'Is Filled'</p>
+                        <div class="row">
+                            <div class="col-xs-8" style="margin-bottom:2%">
+                                <a href="javascript:void(0)" title="Mandatory field" class="mandatory-icon"/>
+                                <span class="menu">                       
+                                    <apex:selectList id="addon1" styleClass="select-menu" style="padding-left: 15px;" size="1" onchange="$('#err9').css('display','none');">
+                                        <apex:selectOptions value="{!AdditionalFields}"/>
+                                    </apex:selectList>
+                               </span>
+                            </div>
+                            <div class="col-xs-4" style="margin-bottom:2%">
+                                <span class="menu">                       
+                                    <apex:selectList id="addonval1" styleClass="select-menu" style="padding-left: 15px;" size="1">
+                                        <apex:selectOption itemLabel="Filled" itemValue="not null"/>
+                                        <apex:selectOption itemLabel="Blank" itemValue="null"/>
+                                    </apex:selectList>
+                               </span>
+                            </div>
+                        <!--    <a href="javascript:void(0);" title="Mandatory Field" style="font-size: 21px;margin-top: 2%;text-decoration: none;color: red; float: left;">*</a>  -->
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-8" style="margin-bottom:2%">
+                                <span class="menu">                       
+                                    <apex:selectList id="addon2" styleClass="select-menu" style="padding-left: 15px;" size="1" onchange="$('#err9').css('display','none');">
+                                        <apex:selectOptions value="{!AdditionalFields}"/>
+                                    </apex:selectList>
+                               </span>
+                            </div>
+                            <div class="col-xs-4" style="margin-bottom:3%">
+                                <span class="menu">                       
+                                    <apex:selectList id="addonval2" styleClass="select-menu" style="padding-left: 15px;" size="1">
+                                        <apex:selectOption itemLabel="Filled" itemValue="not null"/>
+                                        <apex:selectOption itemLabel="Blank" itemValue="null"/>
+                                    </apex:selectList>
+                               </span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-8" style="margin-bottom:3%">
+                                <span class="menu">                       
+                                    <apex:selectList id="addon3" styleClass="select-menu" style="padding-left: 15px;" size="1" onchange="$('#err9').css('display','none');">
+                                        <apex:selectOptions value="{!AdditionalFields}"/>
+                                    </apex:selectList>
+                               </span>
+                            </div>
+                            <div class="col-xs-4" style="margin-bottom:2%">
+                                <span class="menu">                       
+                                    <apex:selectList id="addonval3" styleClass="select-menu" style="padding-left: 15px;" size="1">
+                                        <apex:selectOption itemLabel="Filled" itemValue="not null"/>
+                                        <apex:selectOption itemLabel="Blank" itemValue="null"/>
+                                    </apex:selectList>
+                               </span>
+                            </div>
+                        </div>
+                        <div id="err9" class="row" style="display: none; width:623px; top:98%; left:0;">
+                            <apex:outputPanel styleClass="errorMessage"  style=" display:block;width: 61%; margin: 0 auto;" rendered="true">
+                            Please select atleast one field to proceed.
+                            </apex:outputPanel>
+                        </div>                    
+                    </div>
+                                        
+                </div>
+                <div class="row" style="width:100%; margin-left:0;">
+                    <div style="float: left">
+                        <ul class="pagerNew" style="padding: 0px; margin: 0px;">
+                            <li><a id="step-3-prev" href="javascript:void(0)" onclick="$('#prev-loading').show(); step3Previous();"><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev</a></li>
+                        </ul>
+                        <p style="font-size: 12px; color:#616161;white-space: nowrap;width: 84%; text-align: right;font-weight: 600;">Reset the search criteria</p>
+                    </div>  
+                    <div style="float: right">
+                        <ul class="pagerNew" style="margin: 0px;">
+                            <li style="margin-right: 0em;"><a id="step-3-next" href="javascript:void(0)" onclick="validateAddons();">Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a></li>
+                        </ul>
+                        <p style="font-size: 12px; color:#616161;white-space: nowrap; text-align: right;font-weight: 600;">Start the search</p>
+                    </div>
+                 
+                </div>
+            </apex:outputPanel>
+            
+<!---------------------------------------------------------Step 4-------------------------------------------------------------------------------->
+          <apex:outputPanel rendered="{!step4}">
+            <div id="step3Panal">
+            <script>
+            
+            var currentPage=1;
+            var pageSize=20;
+            var $mapParentChildren='';
+            var $mapChildren='';
+            var mastersCheck='';
+            var childrenCheck='';
+            var noOfRecords=0;
+            var newSize=0;
+            var allRecords='';
+            var csvChildrenMap='';
+            var csvJSON=[];
+            
+            //checks all the checkboxes on the page 
+            function checkAllMasters(obj,receivedInputID){
+                var inputCheckBox = document.getElementsByTagName("input");                  
+                        for(var i=0; i<inputCheckBox.length; i++){          
+                            if(inputCheckBox[i].id.indexOf(receivedInputID)!=-1){                                     
+                                inputCheckBox[i].checked = obj.checked;
+                            }
+                        }
+            } 
+            
+            //method to open the master preview window
+            function setJS(){
+               if($('.Table').find('.errorMsg').length==0){
+                   prevVals.length=0;
+                   $("[class='inp']").each(function(){
+                       if($(this).parent().find("div[class='inp']").length==1)
+                           prevVals.push($(this).find(".lookupInput").find("input").val());
+                       else
+                           prevVals.push($(this).val());
+                   });
+               }
+               
+               $(".Table").find("table").each(function(){
+                   var msid=$(this).parent().attr("id");
+                   msid=msid.replace("m","");
+                   $("."+msid).find(".copy-btn").css({'pointer-events':'none','background':'#e0c4c4'});
+               });
+               
+               $('body,html').css('overflow','hidden');
+               $(".Table").find("tbody").find("td").each(function(){
+                   if($(this).find("a").prop("title")=="")
+                       $(this).find(".copy-btn").css({'pointer-events':'none','background':'#e0c4c4'});
+               });
+               $(".Table").find("thead").find("td").each(function(){
+                   if($(this).find("input").prop("type")=="checkbox"){
+                       var msid=$(this).attr("id");
+                       msid=msid.replace("m","");
+                       $("."+msid).find(".copy-btn").css({'pointer-events':'none','background':'#e0c4c4'});;
+                   }
+               });
+               
+               $("[id='loading-img']").css('display','none');
+               $("[id='prevDiv']").css("pointer-events","all");
+               $(".Table").css('opacity',1);
+               $("#prevDiv").css('display','block');
+               characterCheckFlag=1;
+            }
+            
+           function disp(){
+               $("#myModal").css('display','block');
+           }
+           /* 
+           function prepForView(id){
+               //alert(id);
+               viewRecordDetails(id);
+           }
+            */
+           function completeView(){
+               //alert("view complete");
+               $("#prevDivSlave").css('display','block');
+           }
+            
+            //this appends the records on load
+            $(document).ready(function(){
+                var size=0;
+                var totRec="{!actualCount}";
+                if(totRec>$(".recordNo").text())
+                    $("#opdIN").show();
+                node="";
+                var f="{!displayFields}";
+                var q="{!queryFields}";
+                $mapParentChildren = jQuery.parseJSON('{!JSENCODE(masterJson)}');
+                $mapChildren = jQuery.parseJSON('{!JSENCODE(jsonMap)}');
+                csvChildrenMap=$mapChildren;
+                var fieldNames='{!jsonFields}';
+                fieldNames=fieldNames.replace('[','');
+                fieldNames=fieldNames.replace(']','');
+                //var f=fieldNames;
+                fieldNames=escChar(fieldNames);
+                fieldNames=fieldNames.split(',');
+                for(d in fieldNames){
+                    fieldNames[d]=fieldNames[d].trim();
+                }
+                var node="<tbody class='app'>";
+                for(i in $mapParentChildren){
+                    size++;
+                    noOfRecords++;
+                    node+="<tr id='"+i+"' style='display:none; background:#dfdfdf; border-bottom:solid 1px #fff'><td style='width:52px; padding-left:27px; font-size:15px;'><a id='p"+i+"' style='text-decoration:none; color:#fff;' href='javascript:void(0);' class='arrow-right' onclick='showChildren(this.id);'></a></td><td style='width:52px; text-align:center;'><input id='c"+i+"' type='checkbox' onclick='checkChildren(this.id); uncheckMA(); checkMA();'/></td><td style='width:60px; font-size: 14px;'>("+$mapChildren[$mapParentChildren[i]["Id"]].length+")</td>"
+                    for(f in fieldNames){
+                        node+="<td style='width:164px;font-size: 14px; overflow:hidden; text-overflow:ellipsis; white-space: nowrap;'><a href='javascript:void(0);' style='text-decoration: none !important; color: #595959 !important;' title='"+escChar($mapParentChildren[i][fieldNames[f]])+"'>"+escChar($mapParentChildren[i][fieldNames[f]])+"</a></td>";
+                    }
+                    node+="<td style='width:auto; float:right; line-height:1.3;'><a id='pr"+i+"' class='table-btn' href='javascript:void(0);' onclick='prepForPreview(this.id); previewRow=this.id;' style='display:none;'><span class='glyphicon glyphicon-pencil' style='transform: rotate(49deg);font-size: 13px;'></span> MODIFY</a></td></tr>";
+                }
+                node+="</tbody>";
+                $("#head").after(node);
+                var childNode='';
+                for(x in $mapParentChildren){
+                    childNode='';
+                    for(c in $mapChildren[$mapParentChildren[x]["Id"]]){
+                        childNode+="<tr id='"+x+"-"+c+"'style='display:none; background: #f4f4f4; border-bottom:solid 0.5px #fff'><td style='width:52px;'></td><td style='width:52px; text-align: center;'><input id='c"+x+"-"+c+"' type='checkbox' onclick='uncheckMaster(this.id); uncheckMA(); checkTheMaster(this.id);showPreviewButton(this.id); checkMA();'/></td><td style='width:60px;'></td>";
+                        for(f in fieldNames){
+                            childNode+="<td style='width:164px;font-size: 14px;overflow:hidden; text-overflow:ellipsis; white-space: nowrap;'><a href='javascript:void(0);' style='text-decoration: none !important; color: #595959 !important;' title='"+escChar($mapChildren[$mapParentChildren[x]["Id"]][c][fieldNames[f]])+"'>"+escChar($mapChildren[$mapParentChildren[x]["Id"]][c][fieldNames[f]])+"</a></td>";
+                        }
+                        childNode+="<td style='width:auto; float:right; line-height:1.3;'></td></tr>";
+                    }
+                    $("#"+x).after(childNode);
+                    for(ccm in csvChildrenMap[$mapParentChildren[x]["Id"]]){
+                        delete csvChildrenMap[$mapParentChildren[x]["Id"]][ccm]["attributes"];
+                        csvJSON.push(csvChildrenMap[$mapParentChildren[x]["Id"]][ccm]);
+                    }                    
+                }
+                for(i=0;i<20;i++){
+                    $("#"+i).css('display','table-row');
+                }
+                if(size%20==0){
+                    size=size/20;
+                }
+                else{
+                    size=(size/20)+1;
+                }
+                var pageNode="";
+                newSize=Math.floor(size);
+                for(s=1;s<=size;s++){
+                    pageNode+="<li id='ls"+s+"' class='lsc"+s+"' style='display:none'><a href='javascript:void(0)' onclick='currentPage=$(this).text(); changePages($(this).text());'>"+s+"</a></li>";
+                }
+                $(".ull").find(' > li:nth-last-child(1)').before(pageNode);
+                $(".ull").find("a").each(function(){
+                    if($(this).text()=="1"){
+                        $(this).css('background','#099ad6');
+                        $(this).css('color','white');
+                    }
+                });
+                if('{!queryRun}'==12){
+                    $(".step-4-notify-addons").fadeIn();
+                }
+                setTimeout(function(){ $(".step-4-notify-addons").fadeOut(); },10000);
+                if($(".ull").children().length==6){
+                    $("#upperSize").addClass("disable-component");
+                    $("#lowerSize").addClass("disable-component");
+                    $(".pre").find("a").addClass("disable-component");
+                    $(".nex").find("a").addClass("disable-component");
+                }else{
+                    $(".pre").find("a").addClass("disable-component");
+                }
+                for(var u=1;u<6;u++){
+                    $(".lsc"+u).show();
+                }
+                    
+             });
+        
+        //this method is called when a page is changed during pagination
+        function changePages(cp){
+            $(".pagination-error").hide();
+            $(document).find("a").each(function(){
+                if($(this).text()==cp){
+                    $(this).css('background','#099ad6');
+                    $(this).css('color','white');
+                }
+                else if($(this).css('background-color')=="rgb(9, 154, 214)" && $(this).css('color')=="rgb(255, 255, 255)"){
+                    $(this).css('background','#ffffff');
+                    $(this).css('color','#5f7ab7');
+                }
+                
+            });
+            if(newSize>1){
+                if(cp==1){
+                    $(".pre").find("a").addClass("disable-component");
+                    $(".nex").find("a").removeClass("disable-component");
+                }else if(cp==newSize){
+                    $(".nex").find("a").addClass("disable-component");
+                    $(".pre").find("a").removeClass("disable-component");
+                } else{
+                    $(".pre").find("a").removeClass("disable-component");
+                    $(".nex").find("a").removeClass("disable-component");
+                }
+            }else{
+                $(".pre").find("a").addClass("disable-component");
+                $(".nex").find("a").addClass("disable-component");
+            } 
+            for(j in $mapParentChildren){
+                $("#"+j).css('display','none');
+                $("#"+j).find("input[type='submit']").prop('value','+');
+                for(k in $mapChildren[$mapParentChildren[j]["Id"]]){
+                    $("#"+j+"-"+k).css('display','none');
+                }
+                $("#p"+j).prop('class','arrow-right');
+            }
+            for(i=(cp-1)*pageSize;i<cp*pageSize;i++){
+                m='';
+                for(j in $mapParentChildren){
+                    if($("#"+i+"-"+j).find("input[type='checkbox']").is(":checked") && !($("#"+i).find("input[type='checkbox']").is(":checked"))){
+                        for(k in $mapChildren[$mapParentChildren[j]["Id"]]){
+                            $("#"+i+"-"+k).css('display','table-row');
+                        }
+                        m=i;
+                        $("#p"+m).prop('class','arrow-down');
+                        break;
+                    }
+                }
+                $("#"+i).css('display','table-row');
+                
+                }
+                if((cp==5||cp==9||cp==13||cp==17||cp==21) && newSize>cp){
+                    if($(".lsc"+(cp-1)).css("display")=="none"){
+                        for(var sd=1;sd<=$(".ull").children().length/2;sd++)
+                            $(".lsc"+sd).hide();
+                        var temp=parseInt(cp)-4;
+                        for(var p=parseInt(cp);p>=temp;p--)
+                            $(".lsc"+p).show();
+                    }else{
+                        var temp=parseInt(cp)+4;
+                        for(var sd=1;sd<=$(".ull").children().length/2;sd++)
+                            $(".lsc"+sd).hide();
+                        for(var n=parseInt(cp);n<=temp;n++){
+                            if(newSize>=n)
+                                $(".lsc"+n).show();
+                        }
+                    }
+                }
+                return false;
+        }
+         
+        //method to change the no of pages on page size change
+        function changeNoOfPages(ps){
+            $(".pagination-error").hide();
+            var num=0;
+            $(".ull").find('[id*="ls"]').each(function(){
+                num++;
+            });
+            for(i=1;i<=num;i++){
+                $(".ull").find("#ls"+i).css('display','none');
+            }
+            newSize=0;
+            if(noOfRecords%ps==0)
+                newSize=Math.floor(noOfRecords/ps);
+            else
+                newSize=Math.floor(noOfRecords/ps)+1;
+            for(j=1;j<=5;j++){
+                if(j<=newSize)
+                    $(".ull").find("#ls"+j).css('display','inline');
+            }
+            currentPage=1;
+            
+            changePages(currentPage);
+        }
+        
+                  
+        //method to render the corresponding secondary records of the master record  
+        function showChildren(rid){
+            var x=rid;
+            x=x.replace('p','');
+            if($("#"+rid).prop('class')=="arrow-right"){
+                for(i in $mapChildren[$mapParentChildren[x]["Id"]]){
+                    $("#"+x+"-"+i).css('display','table-row');
+                }
+                $("#p"+x).prop('class','arrow-down');
+            }
+            else{
+                for(i in $mapChildren[$mapParentChildren[x]["Id"]]){
+                    $("#"+x+"-"+i).css('display','none');
+                }
+                $("#p"+x).prop('class','arrow-right');
+            }
+            return false;
+        }
+        
+        
+        //method to check all the secondary records corresponding to the chosen master    
+        function checkChildren(rid){
+            var row=rid.replace('c','');
+            if($("#"+rid).is(":checked")){
+                $("#"+row).css('background','#9dd0e1');
+                for(j in $mapChildren[$mapParentChildren[row]["Id"]]){
+                    $("#"+row+"-"+j).find("input[type='checkbox']").prop('checked',true);
+                    $("#"+row+"-"+j).css('background','#c0dde5');
+                }
+                $("#pr"+row).css('display','block');
+            }
+            else{
+                $("#"+row).css('background','rgb(223, 223, 223)');
+                for(j in $mapChildren[$mapParentChildren[row]["Id"]]){
+                    $("#"+row+"-"+j).find("input[type='checkbox']").prop('checked',false);
+                    $("#"+row+"-"+j).css('background','rgb(244, 244, 244)');
+                }
+                $("#pr"+row).css('display','none');
+            }
+        }    
+        
+        //method to uncheck the merge all checkbox
+        function uncheckMA(){
+            $('[id*="mergeallID"]').removeAttr('checked');
+        }
+        
+        //method to uncheck the corresponding master record of clicked secondary record
+        function uncheckMaster(idd){
+            var rid='';
+            rid=idd.replace('c','');
+            var i=rid.indexOf('-');
+            rid=rid.substring(0,i);
+            $("#"+rid).find("input[type='checkbox']").prop('checked',false);
+            $("#"+rid).css('background','rgb(223,223,223)');
+        }
+        
+        //method to clean the string of selected secondary records as well as master records
+        function cleanCheckedVariables(){
+            if(ranASearch==true && fieldString.length==0){
+                var fl='{!fieldList}';
+                fl=fl.replace("[","");
+                fl=fl.replace("]","");
+                for(x in fl.split(",")){
+                    if(fieldString=="")
+                        fieldString=fl.split(",")[x];
+                    else
+                        fieldString+=","+fl.split(",")[x];
+                }
+                oOptVal='{!selectobject}';
+            }
+            var checkedMasters='';
+            var checkedSlaves='';
+            if($("[id*='mergeallID']").is(":checked")){
+                
+            }else{
+                for(i in $mapParentChildren){
+                    if($("#c"+i).is(":checked")){
+                        if(checkedMasters=='')
+                            checkedMasters=$mapParentChildren[i]["Id"];
+                        else
+                            checkedMasters+=","+$mapParentChildren[i]["Id"];
+                    }else{
+                        for(j in $mapChildren[$mapParentChildren[i]["Id"]]){
+                            if($("#c"+i+"-"+j).is(":checked")){
+                                if(checkedSlaves=='')
+                                    checkedSlaves=$mapChildren[$mapParentChildren[i]["Id"]][j]["Id"]+":"+$mapParentChildren[i]["Id"];
+                                else
+                                    checkedSlaves+=","+$mapChildren[$mapParentChildren[i]["Id"]][j]["Id"]+":"+$mapParentChildren[i]["Id"]; 
+                            }
+                        }    
+                    }    
+                }
+            }
+            if(!($("[id*='mergeallID']").is(":checked")) && checkedSlaves=="" && checkedMasters=="")
+                $("#err5").show();
+            else{
+                sforce.connection.sessionId = "{!$Api.Session_ID}";
+                try{
+                    var qr =sforce.connection.query("Select "+fieldString+" From "+oOptVal); 
+                    var records = qr.getArray("records");
+                    $("#modify-loading").show();
+                    $("#step-4-next").addClass("disable-np-btn");
+                    $("#step-4-prev").addClass("disable-np-btn");
+                    mergeRecords(checkedMasters,checkedSlaves);
+                }catch(e){
+                    alert("You seem to have modified the schema of the object. Please refresh the page or go back & change your search criteria.");
+                }
+            }
+        } 
+        
+        //method to save the checked secondary records for master preview
+        function prepForPreview(rid){
+            var checkedForPreview='';
+            var rowId=rid;
+            rowId=rowId.replace('pr','');
+            mID=$mapParentChildren[rowId]["Id"];
+            mCheck=$("#c"+rowId).is(":checked");
+            if(mCheck==false){
+                children=$mapChildren[mID];
+                for(c in children){
+                    if($("#c"+rowId+"-"+c).is(":checked")){
+                        if(checkedForPreview=="")
+                            checkedForPreview=children[c]["Id"];
+                        else
+                            checkedForPreview+=","+children[c]["Id"];
+                    }
+                }
+            }
+            if(mCheck==false && checkedForPreview.split(',').length>100){
+                alert('A master cannot be modified if the number of corresponding selected duplicates exceeds 100');
+                return false;;
+            }else if(mCheck==true && $mapChildren[mID].length>100){
+                alert('A master cannot be modified if the number of corresponding selected duplicates exceeds 100');
+                return false;
+            }
+                $("#modify-loading").show();
+                updateLists(mID,mCheck,checkedForPreview);
+            
+        }
+        
+        
+        
+        //hides the error message on click of any checkbox
+        $(document).find("input[type='checkbox']").click(function(){
+            $("#err5").css('display','none');
+        });
+        
+        
+        function checkTheMaster(rid){
+            var rowId=rid.replace("c","");
+            if($("#"+rid).is(":checked"))
+                $("#"+rowId).css('background','rgb(192, 221, 229)');
+            else
+                $("#"+rowId).css('background','rgb(244, 244, 244)');
+            var msID=rid.substring(rid.indexOf('c')+1,rid.indexOf('-'));
+            var flag=0;
+            for(x in $mapChildren[$mapParentChildren[msID]["Id"]]){
+                if(!($("#c"+msID+"-"+x).is(":checked"))){
+                    flag=1;
+                    break;
+                }
+            }
+            if(flag==0){
+                $("#c"+msID).prop('checked',true);
+                $("#"+msID).css('background','#9dd0e1');
+            }
+        }
+        
+        function showPreviewButton(rid){
+            var msID=rid.substring(rid.indexOf('c')+1,rid.indexOf('-'));
+            var flgg=0;
+            for(x in $mapChildren[$mapParentChildren[msID]["Id"]]){
+                if($("#c"+msID+"-"+x).is(":checked")){
+                    flgg=1;
+                    break;
+                }
+            }
+            if(flgg==1){
+                $("#pr"+msID).css('display','block');
+            }
+            else{
+                $("#pr"+msID).css('display','none');
+            }
+        }
+        
+        function checkMA(){
+            var f=0;
+            $("#tftb").find("input[type='checkbox']").each(function(){
+                if(!($(this).is(":checked"))){
+                    f=1;
+                }
+            });
+            if(f==0){
+                $('[id*="mergeallID"]').prop('checked',true);    
+            }
+        }
+        
+        function toggleExport(){
+            if($("#expOpt").css("display")=="none"){
+                $("#expOpt").fadeIn();
+            }
+            else{
+                $("#expOpt").fadeOut();
+            }
+            return false;
+        }
+        
+        function checkAllCheckboxes(){
+            $("[id*='tablePanal']").find('input[type=\'checkbox\']').prop('checked',$("[id*='mergeallID']").is(":checked"));
+            if($("[id*='mergeallID']").is(":checked")){
+                for(p in $mapParentChildren){
+                    $("#"+p).css('background','#9dd0e1');
+                    $("#pr"+p).css('display','block');
+                    for(c in $mapChildren[$mapParentChildren[p]['Id']]){
+                        $("#"+p+"-"+c).css('background','#c0dde5');
+                    }
+                }
+            }
+            else{
+                for(p in $mapParentChildren){
+                    $("#"+p).css('background','rgb(223, 223, 223)');
+                    $("#pr"+p).css('display','none');
+                    for(c in $mapChildren[$mapParentChildren[p]['Id']]){
+                        $("#"+p+"-"+c).css('background','rgb(244, 244, 244)');
+                    }
+                }
+            }
+            
+        }
+        
+        function escChar(t){
+             t=t.replace("<","&lt").replace(">","&gt");
+             t=t.replace(">","&gt");
+             t=t.replace("&","&amp");
+             t=t.replace('"',"&quot");
+             t=t.replace("/","&#x2F");
+             t=t.replace("'","&#x27");
+             t=t.replace("<script>","");
+             return t;
+         }
+         
+                 
+        function emailCompletion(){
+            $(".email-notify").fadeIn();
+            setTimeout(function(){ $(".email-notify") },3000);
+        }
+         </script>
+            <!--
+            <apex:inputHidden value="{!masterArr}" id="hiddenFieldMaster"/>
+            <apex:inputHidden value="{!slaveArr}" id="hiddenFieldSlave"/>
+            <apex:actionFunction name="updateLists" action="{!updateLists}" reRender="prevMaster" oncomplete="setJS();">
+                <apex:param id="mID" name="masterID" value=""/>
+                <apex:param id="mChecked" name="mChecked" value=""/>
+                <apex:param id="slaves" name="sChecked" value=""/>
+            </apex:actionFunction> -->
+            <apex:actionFunction name="mergeRecords" action="{!mergeRecords}" reRender="mainPanal" oncomplete="$('#modify-loading').hide();">
+                <apex:param id="anode" name="node" value="" />
+                <apex:param id="andrnode" name="node2" value=""/>
+            </apex:actionFunction>
+            <!--
+            <apex:actionFunction name="viewRecordDetails" action="{!viewRecordDetails}" reRender="prevSlave" oncomplete="completeView();">
+                <apex:param id="rid" name="recid" value=""/>
+            </apex:actionFunction>
+            -->
+            <apex:variable var="rowNo" value="{!0}"/>        
+             <div class="row steps-wrapper">
+                  <div class="step-circle-box">
+                      <div class="arrow-wrap">
+                        <h2>Step 4</h2>
+                        <span class="step-arrow"></span>
+                      </div>
+                  </div>
+                  <div class="text-wrpper">
+                    <h3>Search Duplicate</h3>
+                    <p>List of duplicates based on the search criteria is displayed below. Kindly select the records to continue for merging.</p>
+                  </div>
+                </div>
+                <div class="row step-4-notify-addons">There was no master record matching your existing master selection criteria. We have selected master record by removing your additional filters.</div>
+                <div class="row">
+                    <div class="col-md-12 queryText" >
+                        Object: {!objectLabel} --> Criteria: {!showCriteria}
+                    </div>
+                </div>
+                    
+               <apex:outputPanel id="tablePanal6" rendered="{!if(mSize>0,true,false)}">
+                <div class="row" style="width:100%; margin-left:0;">   
+                    <div class="paginationWrapper2">
+                        <div class="goToPage">
+                            <span class="showRows" style="margin-left: 0;">Show records 
+                               <select id="upperSize" class="showRowsInput3" onchange="pageSize=$(this).val(); $('#lowerSize').val($(this).val()); changeNoOfPages(pageSize); return changePages(currentPage);">
+                                    <option>20</option>
+                                    <option>50</option>
+                                    <option>100</option>                                   
+                                </select>
+                            </span>
+                        </div>
+                        <div class="paginationInner">
+                            <nav>
+                                <ul class="pagination leftMargin ull" style="margin: 10px 0;">
+                                    <li class="pre"><a id="prev" href="javascript:void(0)" aria-label="Previous" onclick="return changePages(--currentPage);"><span aria-hidden="true">&laquo;</span></a></li>
+                                    <li class="nex"><a id="next" href="javascript:void(0)" aria-label="Next"  onclick="return changePages(++currentPage);"><span aria-hidden="true">&raquo;</span></a></li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                
+                </apex:outputPanel> 
+                
+                <!-- NOTIFICATION STARTS HERE -->
+                <div class="row" id="opdIN" style="display:none;width:100%; margin-left:0;">
+                      <apex:outputPanel styleClass="notificationMessage" style="display:block; text-align: center;" >There are more duplicate records corresponding to this criteria. Please run this job again for merging the remaining records.
+                      <a href="javascript:void(0);" onclick="$('#opdIN').hide();" style="text-decoration: none !important; color: #e81414; font-weight: 600; float: right; font-size: 16px;">X</a>
+                      </apex:outputPanel>
+                </div>
+                <!-- NOTIFICATION ENDS HERE -->
+                 <div class="row" style="width:100%; margin-left:0; margin-bottom: -1%;">
+                    <div class="tableTitleWrapper" style="border-bottom:none;">
+                        <div class="mergeAll" id="topTable"><apex:inputCheckbox id="mergeallID" value="{!mergeAll}" onclick="checkAllCheckboxes();" />  Merge All (Select to merge all records)</div>
+                        <!-- div class="wrapper" style="margin-top: 6px;">
+                            <span class="helpIcon"></span>
+                            <div class="tooltip" style="margin-right: -8px;">Download your duplicates directly from here, If the number of records are more than 3500, then the duplicate report (.csv) will be sent via mail to your inbox.</div>
+                        </div -->
+                        
+                        <div class="recordsWrapper" style="float:right;width: auto;margin-left: 0px;">
+                             <span class="recordsLabel" style="float:none; margin-left:0; color: #787878;">Total No. of Duplicate Records</span>
+                             <span class="recordNo" style="display:inline; float:none; margin-left:0px;">{!totalCountDuplicateRecords}</span>
+                        </div>
+                        <div class="recordsLabel" style="margin-right: 10px;float: right;border-right: solid 2px #f7941d;padding-right: 10px;">
+                            <apex:inputCheckbox value="{!mailCsv}" style="margin-right:7px;"/><span style="color: #787878;">Mail me a duplicate report (.csv)</span>
+                        </div> 
+                    </div>
+                    
+                    <!-- TABLE STARTS HERE -->
+                    <apex:outputPanel id="tablePanal" rendered="{!if(mSize>0,true,false)}">
+                        <table id="tftb" class="TFtable" >
+                            <thead id="head">
+                                <tr style="background: #7c7c7c;">
+                                    <th style="width:52px;"></th>
+                                    <th style="width:52px;"></th>
+                                    <th style="width:60px; font-size: 14px;">Count</th>
+                                    <apex:repeat value="{!fieldLabels}" var="fields">
+                                        <th style="width: 164px; font-size: 14px; white-space: nowrap; text-overflow:ellipsis; overflow:hidden;"><a href="javascript:void(0)" style="text-decoration:none; color:inherit;" title="{!fields}">{!fields}</a></th>
+                                    </apex:repeat>
+                                    <th style="width:75px;"></th>
+                                    
+                                </tr>
+                            </thead>
+                        </table>
+                    </apex:outputPanel>
+                    
+                   <!-- TABLE ENDS HERE -->
+                   
+                    
+                    <apex:outputPanel id="tablePanal1" rendered="{!if(mSize>0,false,true)}">
+                        <script>
+                            $(".tableTitleWrapper").hide();
+                        </script>
+                        <p style="font-size: 16px; text-align:center; color: #7c7c7c; font-weight: 600;">There are no duplicate records to display based on the selected criteria</p>
+                    </apex:outputPanel>
+                    
+                </div>
+                <br/>
+                  
+                  <!-- ERROR STARTS HERE -->
+                  <div id="err5" class="row" style="display:none;width:100%; margin-left:0; margin-bottom: 7px;"> 
+                      <apex:outputPanel id="selection-error" styleClass="errorMessage"  style="display: block; text-align:center;">
+                      Please select a master record or a secondary record to proceed.
+                      </apex:outputPanel>
+                  </div> 
+                  <!-- ERROR ENDS HERE -->
+                  <br/>
+                <apex:outputPanel id="tablePanal2" rendered="{!if(mSize>0,true,false)}">
+                <div class="row" style="margin-bottom: 13px; margin-top: -14px; width:100%; margin-left:0;">   
+                    <div class="paginationWrapper" style="margin-top:0%;">
+                        <div class="goToPage">
+                            <span class="showRows" style="margin-left: 0;">Show records 
+                               <select id="lowerSize" class="showRowsInput2" onchange="pageSize=$(this).val(); $('#upperSize').val($(this).val()); changeNoOfPages(pageSize); return changePages(currentPage);">
+                                   <option>20</option>
+                                   <option>50</option>
+                                   <option>100</option>                                   
+                               </select>
+                            </span>
+                        </div>
+                        <div class="paginationInner">
+                            <nav>
+                                <ul class="pagination leftMargin ull" style="margin: 10px 0;" >
+                                    <li class="pre"><a id="prev" href="javascript:void(0)" aria-label="Previous" onclick="return changePages(--currentPage);"><span aria-hidden="true">&laquo;</span></a></li>
+                                    <li class="nex"><a id="next" href="javascript:void(0)" aria-label="Next"  onclick="return changePages(++currentPage);"><span aria-hidden="true">&raquo;</span></a></li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                </apex:outputPanel>
+                
+                <div class="row" style="width:100%; margin-left:0;">
+                    <apex:outputPanel rendered="{!renderGo}">
+                    <div style="float: left">
+                        <ul class="pagerNew" style="padding: 0px; margin: 0px;">
+                            <li><a id="step-4-prev" href="/apex/advitya__MergeDuplicate" ><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Back</a></li>
+                        </ul>
+                        <p style="font-size: 12px; color:#616161;white-space: nowrap;width: 84%; text-align: right;font-weight: 600;">Go to Step 1</p>
+                    </div>
+                    </apex:outputPanel>
+                    <apex:outputPanel rendered="{!renderNext}">
+                    <div style="float: left">
+                        <ul class="pagerNew" style="padding: 0px; margin: 0px;">
+                            <li><a id="step-4-prev" href="javascript:void(0)" onclick="step4Previous(); $('.app').remove(); $('#prev-loading').show(); "><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev</a></li>
+                        </ul>
+                        <p style="font-size: 12px; color:#616161;white-space: nowrap;width: 84%; text-align: right;font-weight: 600;">Reset the master criteria</p>
+                    </div>
+                    </apex:outputPanel>  
+                    <apex:outputPanel id="tablePanal3" rendered="{!if(mSize>0,true,false)}">
+                    <div style="float: right">
+                        <ul class="pagerNew" style="margin: 0px;">
+                            <li style="margin-right: 0em; "><a id="step-4-next" href="javascript:void(0)" onclick="cleanCheckedVariables();" >Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a></li>
+                        </ul>
+                        <p style="font-size: 12px; color:#616161;white-space: nowrap; text-align: right;font-weight: 600;">Start the merge</p>
+                     </div>
+                     </apex:outputPanel>
+                 </div>
+                 </div>
+    
+           </apex:outputPanel>                        
+           
+            <!--------------------------------------------------------------Step 5----------------------------------------------------------------------------->
+            
+            <apex:outputPanel id="MergeRecordsPanal" rendered="{!step5}" >
+                <apex:actionFunction action="{!storeQuery}" name="storeQuery" rerender="" oncomplete="saveComplete();"/>
+                <div class="row steps-wrapper">
+                  <div class="step-circle-box">
+                      <div class="arrow-wrap">
+                        <h2>Step 5</h2>
+                        <span class="step-arrow"></span>
+                      </div>
+                  </div>
+                  <div class="text-wrpper">
+                    <h3>Merge Duplicate</h3>
+                    <p>Merging has started. You will be notified via email on merge completion. You can save your current search here as well.</p>
+                  </div>
+                </div>
+                
+                <div class="col-12" style="text-align: center;">
+                <label class="control-label select-object" style="color:#5d5d5d;">Merged Records Details</label> 
+                <p>
+                    <span style="font-size: 23px;color: #f7941d;display: block;">Congratulations!</span> 
+                    <span style="font-size: 14px;">Merging has been started. You will be notified via email on completion of the task!</span>
+                </p>
+                    <a href="/apex/advitya__MergeDuplicate" class="step-5-merge-btn btn-warning btn-lg">Merge more records</a>
+                </div>
+                <script>
+                (function(){
+                    if(ranASearch){
+                        $("#qPanel").find("input,textarea,a").prop('disabled',true);
+                        $(".query-save-btn").css("pointer-events","none");
+                        $(".query-save-btn").css("opacity","0.5");
+                        $(".name-area").val(queryNameSelected);
+                        $("#qPanel").find("textarea").val(selectedQueryDescription);
+                        $("#qPanel").find("a").text("Saved!");
+                    }
+                })();
+                
+                $(function(){
+                    $(".name-area").keypress(function(e){
+                        if($(this).val().length==80)
+                            e.preventDefault();
+                    });
+                    $("#qPanel").find("textarea").keypress(function(e){
+                        if($(this).val().length==500){
+                            e.preventDefault();
+                            //alert("Character limit reached!");
+                        }
+                    });
+                    $('input,textarea').bind('cut copy paste', function (e) {
+                        //alert("You are not allowed to paste here!");  
+                        e.preventDefault();
+                    });
+
+                });
+                
+                function checkQueryStorageValues(){
+                    var inputName=$("#qPanel").find(".name-area").val();
+                    var inputDesc=$(".desc").val();
+                    if(inputName.includes(">")||inputName.includes("<")){
+                        $(".step5-error-text").show();
+                        $(".name-area").addClass("error-border");
+                        $(".step5-error-text").text("Please enter a valid name without any special characters!");
+                        return false;   
+                    }
+                    if(inputDesc.includes(">")||inputDesc.includes("<")){
+                        $(".step5-error-text").show();
+                        $(".desc").addClass("error-border");
+                        $(".step5-error-text").text("Please enter a valid description without any special characters!");
+                        return false;
+                    }
+                    if(inputName==""){
+                        $(".step5-error-text").show();
+                        $(".name-area").addClass("error-border");
+                        $(".step5-error-text").text("Please enter a name before saving!");
+                        return false;
+                    }
+                    var obj='{!JSENCODE(objectLabel)}';
+                    var crit='{!showCriteria}';
+                    crit=crit.replace("[","");
+                    crit=crit.replace("]","");
+                    sforce.connection.sessionId = "{!$Api.Session_ID}";
+                    var qrr = sforce.connection.query("Select Name,advitya__qObject__c,advitya__qcriteria__c From advitya__QueryStorage__c"); 
+                    var queries = qrr.getArray("records");
+                    for(q in queries){
+                        if(inputName==queries[q]["Name"]){
+                            $(".step5-error-text").show();
+                            $(".name-area").addClass("error-border");
+                            $(".step5-error-text").text("Another query is already present under this name!");
+                            return false;
+                        }
+                        else if(queries[q]["advitya__qObject__c"]==obj){
+                            var err=0;
+                            var flag=0;
+                            var tempCrit=queries[q]["advitya__qCriteria__c"];
+                            var cqFields=tempCrit.split(",");
+                            var currentFields=crit.split(",");
+                            cqFields=cqFields.sort();
+                            currentFields=currentFields.sort();
+                            if(cqFields.length!=currentFields.length){
+                                err=0;
+                            }else{
+                                for(f in cqFields){
+                                    //if(crit.toLowerCase().includes(cqFields[f].toLowerCase())){
+                                    if(cqFields[f].toLowerCase().trim()==currentFields[f].toLowerCase().trim()){
+                                        err++;
+                                    }
+                                    flag++;
+                                }
+                                if(!(err==flag)){
+                                    err=0;
+                                }
+                            }
+                            if(err!=0){
+                                $(".step5-error-text").show();
+                                $(".name-area").addClass("error-border");
+                                $(".step5-error-text").text("This query is already present under another name!");
+                                return false;
+                            }
+                        }
+                    }
+                    $("#prev-loading").show();
+                    $("#save-query-btn").addClass("disable-np-btn");
+                    storeQuery();
+                }
+                
+                function saveComplete(){
+                    $("#qPanel").find("input,textarea,a").prop('disabled',true);
+                    $(".query-save-btn").css("pointer-events","none");
+                    $(".query-save-btn").css("opacity","0.5");
+                    $("#qPanel").find("a").text("Saved!");
+                    $("#prev-loading").hide();
+                }
+                
+                function redirectToHome(){
+                    var tempTag=window.location.href;
+                    if(tempTag.includes("lightning")){
+                        window.location.href="/one/one.app#/home";
+                    }else{
+                        window.location.href="/home/home.jsp";
+                    }
+                }
+                </script>
+                <div id="saveText" class="row extra-row" style="font-size:14px; margin-top: 19px; font-weight: 600; margin-bottom: 6px;padding-bottom: 1px; width:100%; margin-left:0;">
+                <p class="col-md-2">Save your query here:</p>
+                <div class="col-md-8 step5-error-text"></div>
+                </div>
+                <div id="qPanel" class="row extra-row" style="width:100%; margin-left:0;">                      
+                       
+                       <div class="col-md-4">
+                            <p style="margin: 0; font-weight:600;">Query</p>
+                            <div style="border: solid 1px #ccc; padding: 14px; word-wrap:break-word;">
+                           <apex:outputText value="Object: {0} --> Criteria: {1}" ><apex:param value="{!objectLabel}"/><apex:param value="{!showCriteria}"/></apex:outputText>
+                            </div>
+                       </div>
+                            
+                               
+                       <div class="col-md-2">
+                            <p style="margin: 0; font-weight:600;">Name</p>
+                            <apex:inputText disabled="{!(!renderSave)}" styleClass="name-area" value="{!queryName}" onclick="$(this).removeClass('error-border'); $('.step5-error-text').hide(); $('#err51').css('display','none'); $('#err52').css('display','none'); $('#err53').css('display','none');"/>
+                       </div>
+                    
+                    <div class="col-md-5">
+                        <p style="margin: 0; font-weight:600;">Description</p>
+                        <apex:inputTextarea disabled="{!(!renderSave)}" styleClass="desc" value="{!queryDescription}" onclick="$(this).removeClass('error-border'); $('.step5-error-text').hide(); $('#err51').css('display','none'); $('#err52').css('display','none'); $('#err53').css('display','none');"/>
+                        
+                    </div>
+                    
+                    <div class="col-md-1">
+                      <div style="margin-top: 32px;">
+                          <a id="save-query-btn" href="javascript:void(0);" onclick="checkQueryStorageValues();" class="query-save-btn">Save</a> 
+                      </div>
+                    </div> 
+                    </div>
+                
+                <div class="row" style="width:100%; margin-left:0;">                
+                <div class="col-xs-1" style="float: right; margin-right: 0.5%;">
+                    <ul class="pagerNew" style="margin: 0px;">
+                        <li><a href="#" onclick="redirectToHome();">Exit</a></li>
+                    </ul>
+                </div>
+                </div>
+            </apex:outputPanel>
+         </div>
+     </apex:outputPanel>
+ </apex:form>
+ 
+<apex:includeScript value="{!$Resource.advitya__Jquery_min}"/>
+<apex:includeScript value="{!$Resource.advitya__bootstrap_jsmin}"/>
+<apex:includeScript value="{!$Resource.advitya__bootstrap_min_js}"/>
+</body>
+</html>
+</apex:page>

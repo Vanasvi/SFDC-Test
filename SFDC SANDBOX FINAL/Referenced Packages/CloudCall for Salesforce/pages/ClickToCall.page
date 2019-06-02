@@ -1,0 +1,28 @@
+<apex:page showHeader="false" sidebar="false" standardStylesheets="false">
+
+<head>
+<!-- Imports Open CTI JavaScript library. It should point to a valid Salesforce domain. -->    
+    <script src="/support/api/29.0/interaction.js"></script>  
+    <script src="/resource/synety__clickToCallAdapter" type="text/javascript"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script>  
+        
+        sforce.interaction.cti.enableClickToDial(enableClickToDialCallBack);
+        
+        sforce.interaction.getPageInfo(getPageInfoCallback);
+        
+        sforce.interaction.cti.onClickToDial(click2DiallistenerfromAdapter); 
+        
+        sforce.interaction.onFocus(onFocuscallback);    
+        
+        function enableClickToDialCallBack(response) 
+        {
+            //console.log(response);  
+        }
+        sforce.interaction.cti.setSoftphoneHeight(10);
+    </script>
+</head>
+    <body style="background-color: white;">
+    
+    </body>
+</apex:page>

@@ -1,0 +1,67 @@
+<apex:page standardController="advitya__QueryStorage__c">
+       <style>
+       th.labelCol.vfLabelColTextWrap.first.last {
+            font-size: 13px;
+        }
+       </style>
+       <apex:form >
+       <script>
+       $(function(){
+           var enteredName=$("[id*='nme']").val();
+           var enteredDesc=$("[id*='dsc']").val();
+           $("[id*='nme']").keypress(function(e){
+               if($(this).val().length==80)
+                   e.preventDefault();
+           });
+           $("[id*='dsc']").keypress(function(e){
+               if($(this).val().length==500){
+                   e.preventDefault();
+                   alert("Character limit reached!");
+               }
+           });
+           $('input,textarea').bind('cut copy paste', function (e) {
+               alert("You are not allowed to paste here!");
+               e.preventDefault();
+           });
+       });
+       function checkBeforeSave(){
+           sforce.connection.sessionId = "{!$Api.Session_ID}";
+           var qrr = sforce.connection.query("Select Name,advitya__qObject__c,advitya__qcriteria__c From advitya__QueryStorage__c"); 
+           var queries = qrr.getArray("records");
+           var entName=$("[id*='nme']").val();
+           var entDesc=$("[id*='dsc']").val();
+           if(entName.includes("<") || entName.includes(">") || entDesc.includes("<") || entDesc.includes(">")){
+               alert("Please enter a valid name/description without any special characters!");
+               return false;
+           }
+           if(entName=="{!advitya__QueryStorage__c.Name}"){
+               Save();
+               return false;
+           }
+           for(q in queries){
+               if(queries[q]["Name"]==entName){
+                   alert("This name already exists under this name!");
+                   return false;
+               }
+           }
+           Save();    
+       }
+       </script>
+       <apex:actionFunction action="{!Save}" name="Save" oncomplete="window.location='/apex/advitya__QueryStorage'"/>
+       <apex:pageBlock >
+       <apex:pageBlockButtons >
+       <!--<apex:commandButton value="Save" action="{!Save}" onclick="window.location='https://advitya.ap4.visual.force.com/apex/QueryStorage?sfdc.tabName=01r6F000000r78c';"/> -->
+       <a href="javascript:void(0);" style="text-decoration: none!important;color: #141717;font-weight: 500;background: #fdfdfd;padding: 3px;border-radius: 3px;border: solid 1px silver;" onclick="checkBeforeSave();">Save</a>
+       <apex:commandButton style="background:#fdfdfd;" value="Cancel" action="{!Cancel}" onclick="window.location='/apex/advitya__QueryStorage';" /> 
+       </apex:pageBlockButtons>
+       <apex:pageBlockSection >
+       
+       <apex:inputField id="nme" style="font-size:13px;" value="{!advitya__QueryStorage__c.Name}" />
+       <apex:inputField id="dsc" style="font-size:13px;" value="{!advitya__QueryStorage__c.advitya__Description__c}"/>
+       </apex:pageBlockSection>
+       </apex:pageBlock>
+       </apex:form>
+       <apex:includeScript value="{!$Resource.advitya__Jquery_min}"/>
+       <apex:includeScript value="/soap/ajax/32.0/connection.js"/>
+       <apex:includeScript value="/soap/ajax/32.0/apex.js"/>
+</apex:page>

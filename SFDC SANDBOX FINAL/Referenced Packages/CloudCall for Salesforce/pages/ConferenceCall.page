@@ -1,0 +1,1100 @@
+<apex:page id="pg" controller="synety.ConferenceCallController" showHeader="false" sidebar="false" 
+title="Conference Call - SYNETY CloudCall"> 
+<!-- standardStylesheets="false"> -->
+	
+	<head>
+		<title>Conference Call - SYNETY CloudCall</title>
+	</head>
+	<link rel="stylesheet" href="/resource/synety__dialerStyles/css/normalize.min.css?v17" />
+	<link rel="stylesheet" href="/resource/synety__dialerStyles/css/main.css?v17" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="/resource/synety__dialerStyles/js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
+    <script src="https://malsup.github.io/jquery.blockUI.js"></script>
+     <script src="/resource/synety__jqueryCookie?v17"></script>
+        
+	<style>
+	
+         tr.dataRow {
+           background-color:white;
+         }
+         tr.dataRow:hover {
+           background-color: #e3f3ff;
+         };
+         
+         .clear 
+         {
+			clear: both;
+		 }
+         #info_pop_box { 
+         	display: none; 
+         	position: fixed; 
+         	bottom: 25px; 
+         	right: 10px; 
+         	padding: 15px; 
+         	z-index: 99999; 
+         	font-size: 10px; 
+          }
+		 .info_pop_yellow { 
+		 	background: lightyellow; 
+		  }
+		 .info_pop_red { 
+		 	background: lightpink; 
+		  }
+          
+	        ::-webkit-scrollbar {
+			    width: 12px;
+			}
+			::-webkit-scrollbar-track {
+			    background-color: #eaeaea;
+			    border-left: 1px solid #ccc;
+			}
+			::-webkit-scrollbar-thumb {
+			    background-color: #ccc;
+			}
+			::-webkit-scrollbar-thumb:hover {
+				background-color: #aaa;
+			}
+          
+          
+    </style>
+    <script>
+    	var confSessionId = '{!sessionId}';
+    	var ConferenceDetails = {!conferenceDetails};
+		var conferenceParticipantData = {items: [{pId: "0", name: "", phone: "", sfID: "", IsMute: false, IsHold: false}]};
+
+    	function deleteNumber()
+		{
+			var txtNumber = document.getElementById('callNum');
+			txtNumber.value = txtNumber.value.substring(0, txtNumber.value.length - 1);
+		}
+		
+		function clearNumber()
+		{
+			var txtNumber = document.getElementById('callNum');
+			txtNumber.value = '';
+		}
+		
+		function enterNumber(sNum)
+		{
+			var txtNumber = document.getElementById('callNum');
+			//Yasir CRM Sync v2 JIRA Issue SFC-59 
+			//txtNumber.value += sNum;
+            var numLength = txtNumber.value.length;
+            if(numLength < 20) 
+                txtNumber.value += sNum;
+            else
+                return false ;
+		}
+		
+        function addToConf(cld) 
+		{
+        	if(cld == null)
+        		cld = document.getElementById('callNum').value;
+        		
+			if(cld == '')
+			{
+				alert('Please enter a valid phone number');
+				return;
+			}
+            synety.ConferenceCallController.addToConference(confSessionId , cld,
+            	addToConfCallback, 
+	            {escape: false}
+            );
+            
+            $.blockUI({
+                message: 'Please wait while adding to conference call',
+                centerY: true
+                
+            });
+        }
+        
+        function addToConfCallback(result, event)
+        {
+        	$.unblockUI();
+            if (event.status) {
+            	info_pop_success('Participant added to the conference call successfully');
+                document.getElementById('result').innerHTML = result;
+                ConferenceDetails = JSON.parse(result);
+                loadParticipants();
+                
+            } else if (event.type === 'exception') {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+        
+        function removeFromConf(pId) 
+		{
+        	synety.ConferenceCallController.removeFromConference(confSessionId , pId,
+            	removeFromConfCallback, 
+	            {escape: false}
+            );
+            
+            $.blockUI({
+                message: 'Please wait while removing from conference call',
+                centerY: true
+                
+            });
+        }
+        
+        function removeFromConfCallback(result, event)
+        {
+        	$.unblockUI();
+            if (event.status) {
+                document.getElementById('result').innerHTML = result;
+                if(result.indexOf('removed from conference') > 0)
+                {
+                	info_pop_success('Participant removed from conference call successfully');
+                	var pId = result.replace('removed from conference', '');
+                	pId = pId.replace('Participant', '');
+                	pId = pId.replace(confSessionId, '');
+                	pId = pId.replace('.', '');
+                	pId = pId.trim();
+                	//alert(pId);
+                	
+                	//gets the number from the ParticipantID if the number of participant is same as initiator
+                	var RemovedCLDNumber = '' , CLDNumber = '{!AgentCLI}' , elementId = 'pCLD_' + pId;
+					RemovedCLDNumber = document.getElementById(elementId).value;
+					
+                	
+                	$("#pRow_"+pId).remove();
+                	
+                	for(var a=1; a<conferenceParticipantData.items.length; a++)
+					{
+						if(conferenceParticipantData.items[a].pId == pId)
+						{
+							conferenceParticipantData.items.splice(a, 1);
+							break;
+						}
+					}
+					//if the initiator get remove from the conference call close the window 
+					if(RemovedCLDNumber==CLDNumber)
+					{
+						localStorage.setItem("SelectedCount_"+confSessionId,'')
+						window.close();
+					}
+						
+				
+					
+					//yasir conference call (if only 1 participant is left in conference then close the window)
+					var RemaningParticipants = $('#tableCLDs tr').length ;
+					if(RemaningParticipants <= 2)
+					{
+						localStorage.setItem("SelectedCount_"+confSessionId, '');	
+						window.close();
+					}
+                }
+                else
+                	info_pop_fail('There was some error while processing request. '+ result);
+                //ConferenceDetails = JSON.parse(result);
+                //loadParticipants();
+                
+            } else if (event.type === 'exception') {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+        
+        function holdParticipant(pId) 
+		{
+			var cld = document.getElementById('pCLD_'+pId).value;
+			var doHold = document.getElementById('pIsHold_'+pId).value;
+			if(doHold == 'true')
+				doHold = 'false';
+			else
+				doHold = 'true';
+				
+        	synety.ConferenceCallController.holdParticipant(confSessionId, cld, doHold, pId, 
+            	holdParticipantCallback, 
+	            {escape: false}
+            );
+            
+            $.blockUI({
+                message: 'Please wait while processing request',
+                centerY: true
+                
+            });
+            /*
+            document.getElementById('pIsHold_'+pId).value = doHold;
+            
+            if(doHold == 'true')
+            	document.getElementById('liHold_'+pId).innerHTML = 'Unhold';
+            else
+            	document.getElementById('liHold_'+pId).innerHTML = 'Hold';
+            */
+        }
+        
+        function holdParticipantCallback(result, event)
+        {
+        	$.unblockUI();
+            if (event.status) {
+                document.getElementById('result').innerHTML = result;
+                
+                var arrResult = result.split('__');
+                var txtPID = arrResult[0];
+                
+                if(arrResult[1].indexOf('Unable to put') >= 0)
+                	info_pop_fail('There was some error while processing request. '+ arrResult[1]);
+                else
+                {
+                	info_pop_success('Request processed successfully');
+                
+	                txtPID = document.getElementById(txtPID);
+	                var doHold = document.getElementById('pIsHold_'+txtPID.value).value;
+	                if(doHold == 'true')
+						doHold = 'false';
+					else
+						doHold = 'true';
+					
+					var pID = txtPID.value;
+					
+					document.getElementById('pIsHold_'+txtPID.value).value = doHold;
+					
+	                if(doHold == 'true')
+		            	document.getElementById('liHold_'+txtPID.value).innerHTML = 'Unhold';
+		            else
+		            	document.getElementById('liHold_'+txtPID.value).innerHTML = 'Hold';
+		            
+		            for(var a=1; a<conferenceParticipantData.items.length; a++)
+					{
+						if(conferenceParticipantData.items[a].pId == pID)
+						{
+							conferenceParticipantData.items[a].IsHold = JSON.parse(doHold);
+						}
+					}
+		    	}
+                
+                
+            } else if (event.type === 'exception') {
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+        
+        function muteParticipant(pId) 
+		{
+			//var cld = document.getElementById('pCLD_'+pId).value;
+			var doMute = document.getElementById('pIsMute_'+pId).value;
+			if(doMute == 'true')
+				doMute = 'false';
+			else
+				doMute = 'true';
+				
+        	synety.ConferenceCallController.muteParticipant(confSessionId, pId, doMute, 
+            	MuteParticipantCallback, 
+	            {escape: false}
+            );
+            
+            $.blockUI({
+                message: 'Please wait while processing request',
+                centerY: true
+                
+            });
+            /*
+            document.getElementById('pIsHold_'+pId).value = doHold;
+            
+            if(doHold == 'true')
+            	document.getElementById('liHold_'+pId).innerHTML = 'Unhold';
+            else
+            	document.getElementById('liHold_'+pId).innerHTML = 'Hold';
+            */
+        }
+        
+        function MuteParticipantCallback(result, event)
+        {
+        	$.unblockUI();
+            if (event.status) {
+                document.getElementById('result').innerHTML = result;
+                info_pop_success('Request processed successfully');
+                
+                var arrResult = result.split('__');
+                var txtPID = arrResult[0];
+                txtPID = document.getElementById(txtPID);
+                var doMute = document.getElementById('pIsMute_'+txtPID.value).value;
+                if(doMute == 'true')
+					doMute = 'false';
+				else
+					doMute = 'true';
+				
+				document.getElementById('pIsMute_'+txtPID.value).value = doMute;
+				
+				var pID = txtPID.value;
+				
+                if(doMute == 'true')
+	            	document.getElementById('liMute_'+txtPID.value).innerHTML = 'Unmute';
+	            else
+	            	document.getElementById('liMute_'+txtPID.value).innerHTML = 'Mute';
+                
+                for(var a=1; a<conferenceParticipantData.items.length; a++)
+				{
+					if(conferenceParticipantData.items[a].pId == pID)
+					{
+						conferenceParticipantData.items[a].IsMute = JSON.parse(doMute);
+					}
+				}
+				
+            } else if (event.type === 'exception') {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+        
+        function pauseRecording() 
+		{
+			var isPaused = document.getElementById('recordingPaused').value;
+			if(isPaused == 'true')
+				isPaused = 'false';
+			else
+				isPaused = 'true';
+				
+        	synety.ConferenceCallController.pauseRecording(confSessionId, isPaused, 
+            	pauseRecordingCallback, 
+	            {escape: false}
+            );
+            
+            $.blockUI({
+                message: 'Please wait while processing request',
+                centerY: true
+                
+            });
+        }
+        
+        function pauseRecordingCallback(result, event)
+        {
+        	$.unblockUI();
+            if (event.status) {
+                document.getElementById('result').innerHTML = result;
+                info_pop_success('Request processed successfully');
+                
+                var isPaused = document.getElementById('recordingPaused').value;
+                if(isPaused == 'true')
+					isPaused = 'false';
+				else
+					isPaused = 'true';
+				
+				document.getElementById('recordingPaused').value = isPaused;
+				
+                if(isPaused == 'true')
+                {
+	            	document.getElementById('liCallRecording').className = 'paused';
+	            	document.getElementById('liCallRecording').innerHTML = 'O';
+	            	document.getElementById('liCallRecording').title = 'resume call recording';
+	            }
+	            else
+	            {
+	            	document.getElementById('liCallRecording').className = '';
+	            	document.getElementById('liCallRecording').innerHTML = '||';
+	            	document.getElementById('liCallRecording').title = 'pause call recording';
+                }
+                
+            } else if (event.type === 'exception') {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+        
+        function loadParticipants()
+        {
+        	
+         	$("#tableCLDs tr").remove();
+         	
+            $("#tableCLDs").append('<tr class="headerRow"><th class="headerRow">Phone Number</th><th class="headerRow">Call Controls</th><th class="headerRow">Status</th></tr>');
+            
+            if(ConferenceDetails != null)
+            {
+	            if(ConferenceDetails.Participants.length > 0)
+	            {
+	            	for (var i = 0; i < ConferenceDetails.Participants.length; i++) 
+					{
+						var CLD = ConferenceDetails.Participants[i].CLD;
+						var pID = ConferenceDetails.Participants[i].ParticipantID;
+						var IsMute = false;
+						var IsHold = false;
+						
+						var isFound = false;
+						for(var a=1; a<conferenceParticipantData.items.length; a++)
+						{
+							if(conferenceParticipantData.items[a].pId == pID)
+							{
+								isFound = true;
+								IsHold = conferenceParticipantData.items[a].IsHold;
+								IsMute = conferenceParticipantData.items[a].IsMute;
+							}
+						}
+						
+						if(isFound == false)
+						{
+							conferenceParticipantData.items.push(
+								    {pId: pID, name: "", phone: CLD, sfID: "", IsMute: false, IsHold: false}
+								);							
+						}
+						
+			            var rowData = 
+			            	'<tr class="dataRow" id="pRow_'+pID+'">';
+			            rowData += '<td class="dataCell">'+CLD+'</td>';
+			            rowData += '<td class="dataCell">';
+			            rowData += '<ul class="keypad3">';
+			            
+			            if(IsHold)
+			            	rowData += '<li id="liHold_'+pID+'" onClick="holdParticipant(\''+pID+'\')" style="width:50px">Unhold</li>';
+			            else
+			            	rowData += '<li id="liHold_'+pID+'" onClick="holdParticipant(\''+pID+'\')" style="width:50px">Hold</li>';
+			            	
+			            if(IsMute)
+			            	rowData += '<li id="liMute_'+pID+'" onClick="muteParticipant(\''+pID+'\')" style="width:50px">Unmute</li>';
+			            else
+			            	rowData += '<li id="liMute_'+pID+'" onClick="muteParticipant(\''+pID+'\')" style="width:50px">Mute</li>';
+			            rowData += '<li id="liRemove_'+pID+'" onClick="removeFromConf(\''+pID+'\')" style="width:50px">Remove</li>';
+						rowData += '</ul>';
+						rowData += '<input type="hidden" size="1" id="pIsMute_'+pID+'" value="'+IsMute+'" />';
+						rowData += '<input type="hidden" size="1" id="pIsHold_'+pID+'" value="'+IsHold+'" />';
+						rowData += '<input type="hidden" size="1" id="pId_'+pID+'" value="'+pID+'" />';
+						rowData += '<input type="hidden" size="1" id="pCLD_'+pID+'" value="'+CLD+'" />';
+			            rowData += '</td>';
+			            rowData += '<td class="dataCell" id="callStatus_'+pID+'">&nbsp;</td>';
+			            rowData += '</tr>';
+			           
+			            $("#tableCLDs").append(rowData);
+			        }
+		        }
+			}
+			//alert(JSON.stringify(conferenceParticipantData));   
+        }
+        
+        function info_pop_fail(msg) 
+        {
+   
+			$("#info_pop_box").removeAttr("class");
+			$("#info_pop_box").html(msg).addClass("info_pop_red").fadeIn("slow");
+			
+			setTimeout(function(){
+				$("#info_pop_box").fadeOut("slow");
+			}, 5000);
+			
+		}
+		
+		function info_pop_success(msg) {
+			
+			$("#info_pop_box").removeAttr("class");
+			$("#info_pop_box").html(msg).addClass("info_pop_yellow").fadeIn("slow");
+			
+			setTimeout(function(){
+				$("#info_pop_box").fadeOut("slow");
+			}, 5000);
+			
+		}
+		
+		window.onbeforeunload = function(e) 
+	    {
+	    	//if(window.opener)
+	    	//{
+	    		//window.opener.unblockScreen();	
+	    		localStorage.setItem("Record_"+confSessionId,'Conference');		
+				localStorage.setItem("RecordValue_"+confSessionId, JSON.stringify(false));
+				localStorage.setItem("IsSelected"+confSessionId, JSON.stringify(false));    		
+	    	//}
+	    };
+	    
+	    $( window ).bind('keypress', function(e){
+		   if ( e.keyCode == 13 ) 
+		   {
+		   		if(e.target.id == 'searchBox')
+		   			searchRecord();
+		   		else if(e.target.id == 'callNum')		   		
+		     		addToConf();
+		   }
+		 }); 
+				 
+	    //call hangup
+		function hangupCall()
+		{
+			if(confSessionId != '')
+			{
+				
+				synety.ConferenceCallController.hangupCall(confSessionId, 
+	            	hangupCallCallBack, 
+		            {escape: false}
+	            );
+            
+				$.blockUI({
+					message: 'Please wait while processing request...',
+					centerY: true
+					
+				});
+			}
+		}
+		/*
+		function hangupCallCallBack(response)
+		{
+			$.unblockUI();
+			if (response.result) 
+			{
+				debugLog('hangupCallCallBack response: '+response.result);
+							
+				
+				if(isClickCall)
+				{					
+					callEnds();	
+				}
+			} 
+			else 
+			{
+				debugLog('error on hangupCallCallBack:'+response.error);
+			}
+		}
+		*/
+		function hangupCallCallBack(result, event)
+        {
+        	$.unblockUI();
+            if (event.status) {
+            	localStorage.setItem("SelectedCount_"+confSessionId,'')	
+				window.close();
+                
+            } else if (event.type === 'exception') {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+        
+        function searchRecord()
+        {
+        	var searchTerm = document.getElementById('searchBox').value;
+        	if(searchTerm.length > 1)
+			{
+				
+				synety.ConferenceCallController.searchRecord(searchTerm, 
+	            	searchRecordCallBack, 
+		            {escape: false}
+	            );
+            
+				$.blockUI({
+					message: 'Please wait while searching...',
+					centerY: true
+					
+				});
+			}
+			else
+			{
+				alert("The search term needs to be atleast 2 chars long");
+			}
+        }
+        
+        
+        //yasir conference call (remove all the special character from name)
+        function removeSpecialChars(recName,IsDoubleBackLash)
+		{
+			var NameNFunction = recName;
+			if(recName.length > 0)
+			{
+				if(recName.indexOf('\'') > -1 )
+				{
+					//shumaila logic for sending it to relatedTo
+					if(IsDoubleBackLash)
+						recName = recName.replace(/'/g, "&#39;");
+					else
+						recName = recName.replace(/'/g, "&#92;&#39;");
+				}
+				 if(recName.indexOf('\"') > -1 )
+					recName = recName.replace(/"/g, "&quot;");
+				 if(recName.indexOf('<') > -1)
+					recName = recName.replace(/</g, "&#60;");
+				 if(recName.indexOf('>') > -1)
+					recName = recName.replace(/>/g, "&#62;");
+				 if(recName.indexOf('\\') > -1)
+				 {
+				 	if(IsDoubleBackLash)
+				 		recName = recName.replace(/\\/g, "&bsol;");
+				 	else
+				 		recName = recName.replace(/\\/g, "&bsol;&bsol;");
+				 }
+					
+				 if(recName.indexOf(' ') > -1)
+					recName = recName.replace(/ /g, "&nbsp;");
+				//change the character for shumaila logic 
+				
+				if(recName.indexOf(':') > -1)
+					recName = recName.replace(/:/g, "&#58;");
+				if(recName.indexOf(',') > -1)
+					recName = recName.replace(/,/g, "&#44;");
+					
+				return recName;
+			}	
+			else
+				return '';
+		}
+        
+         //yasir conference call
+        function searchRecordCallBack(result, event)
+        {
+        	var LookUpEntities = '{!LookUpEntitiesExists}';
+        	//alert('LookUpEntities : ' + LookUpEntities);
+        	if(LookUpEntities == 'NotExists')
+        		searchRecordAccountContactLead(result, event) 
+       		else if(LookUpEntities == 'Exists')
+       			searchRecordCRMsyncV2(result, event)
+        }
+        
+        //function searchRecordCallBack(result, event)
+        function searchRecordAccountContactLead(result, event)
+        {
+        	
+        	$.unblockUI();
+            if (event.status) {
+            		$("#searchResults tr").remove();
+            		$("#searchResults tbody").remove();
+            		$("#searchResults thead").remove();
+            		
+            		//yasir conference call
+            		if(result == 'Error')
+					{
+						var errorMessage = 'Your search term includes a search operator or wildcard: * (asterisk), ? (question mark), () (parentheses), or " " (quotation marks). Excluding these, your search term must have 2 or more characters.';
+						info_pop_fail(errorMessage);
+					}
+					//else if(result.indexOf('Exception') > -1)
+					else if(result.indexOf('Exception ::') > -1) 
+					{
+						info_pop_fail(result.substring(7));
+					}
+					else
+					{		
+	            		var objResult = JSON.parse(result);
+	            		if(objResult.searchResult.length == 0)
+	            		{
+	            			info_pop_fail("Your search term did not return any record. Please try another term.");
+	            			return;
+	            		}
+	            		
+	            		var header = '';//'<thead>';
+					    header += '   	<tr id="tblOrderReportHeaderRow"  class="headerRow ">';
+					    header += '   		<td class="dataCell">Type</td>';
+					    header += '   	   	<td class="dataCell">Name</td>';
+					    header += '   	   	<td class="dataCell">Company</td>';
+					    header += '   	   	<td class="dataCell">Phone Numbers</td>'; 
+					    header += '   	   </tr>';
+					    //header += '   </thead>';
+					    $("#searchResults").append(header);
+					    
+	            		for (var i = 0; i < objResult.searchResult.length; i++) 
+						{
+							var recName = objResult.searchResult[i].Name;
+							var recId = objResult.searchResult[i].Id;
+							var recType = objResult.searchResult[i].ObjectType;
+							var phoneNumbers = '';
+							var rowData = '';
+							var NameNFunction = '';
+							//document.getElementById('recName').innerHTML = recName;
+							console.log("\t ObjId: " + recId + "; Name: " + recName + "; object: " + recType);
+							
+							if(recType == 'Contact')
+							{
+								if(objResult.searchResult[i].Phone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Phone: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].Phone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].Phone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Phone: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].Phone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].Phone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+								
+								if(objResult.searchResult[i].MobilePhone != '')	
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Mobile: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].MobilePhone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].MobilePhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Mobile: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].MobilePhone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].MobilePhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+								
+								if(objResult.searchResult[i].OtherPhone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Other: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].OtherPhone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].OtherPhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Other: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].OtherPhone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].OtherPhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+								
+								if(objResult.searchResult[i].HomePhone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Home: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].HomePhone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].HomePhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Home: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].HomePhone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].HomePhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+								
+								if(objResult.searchResult[i].AssistantPhone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Asst.: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].AssistantPhone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].AssistantPhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Asst.: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].AssistantPhone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].AssistantPhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+								   
+							}
+							else if(recType == 'Account')
+							{
+								if(objResult.searchResult[i].Phone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Phone: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].Phone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].Phone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Phone: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].Phone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].Phone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}							
+							}
+							else if(recType == 'Lead')
+							{
+								if(objResult.searchResult[i].Phone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Phone: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].Phone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].Phone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Phone: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].Phone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].Phone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+								
+								if(objResult.searchResult[i].MobilePhone != '')
+								{
+									NameNFunction = removeSpecialChars(recName);
+									phoneNumbers += 'Mobile: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].MobilePhone+'\',\''+NameNFunction+'\',\''+recType+'\',\''+recType+'\');">'+objResult.searchResult[i].MobilePhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+									//phoneNumbers += 'Mobile: <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult.searchResult[i].MobilePhone+'\',\''+recName+'\',\''+recType+'\');">'+objResult.searchResult[i].MobilePhone+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+								}
+							}
+							
+							rowData += '<tr onfocus="if (window.hiOn){hiOn(this);}" onblur="if (window.hiOff){hiOff(this);}" onmouseout="if (window.hiOff){hiOff(this);} " onmouseover="if (window.hiOn){hiOn(this);} " class="dataRow even  first">';   
+						    rowData += '    <td class="dataCell">'+recType+'</td>';
+						    
+						    //rowData += '    <td class="dataCell">'+recName+'</td>';
+						    //check if the name contains the special character '<' then replace it because it make <test auto tag </test>
+						    if(recName.indexOf('<') > -1)
+						    {
+								NameNFunction = recName.replace(/</g, "&lt;");
+								rowData += '    <td class="dataCell">'+NameNFunction+'</td>';
+							}
+							else
+								rowData += '    <td class="dataCell">'+recName+'</td>';
+								
+						    
+						    //fix company name error 
+						    var CompanyName = '';
+						    if(objResult.searchResult[i].Company != null)
+						    {	
+						    	CompanyName = objResult.searchResult[i].Company;
+						    	//CompanyName = CompanyName.replace(/</g, "&lt;");
+						    	CompanyName = removeSpecialChars(CompanyName,true);
+						    	rowData += '<td class="dataCell">'+CompanyName+'</td>';
+						    }
+						    else
+						    	rowData += '<td class="dataCell">&nbsp;</td>';
+						    rowData += '    <td class="dataCell">'+phoneNumbers+'</td>'; 
+						    rowData += '</tr>';
+						    
+							$("#searchResults").append(rowData);
+				
+						}
+						
+						
+	            	//}
+	            	
+	            }    
+            } else if (event.type === 'exception') {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 
+                    'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+            } else {
+            	info_pop_fail(event.message);
+                document.getElementById("result").innerHTML = 'no exception: '+event.message;
+            }
+        }
+
+        function searchRecordCRMsyncV2(result, event)
+		{
+		
+			$.unblockUI();
+			if (event.status) {
+			
+			$("#searchResults tr").remove();
+			$("#searchResults tbody").remove();
+			$("#searchResults thead").remove();
+			
+			//yasir conference call
+			if(result == 'Error')
+			{
+				var errorMessage = 'Your search term includes a search operator or wildcard: * (asterisk), ? (question mark), () (parentheses), or " " (quotation marks). Excluding these, your search term must have 2 or more characters.';
+				info_pop_fail(errorMessage);
+			}
+			else if(result.indexOf('Exception ::') > -1)
+			{
+				info_pop_fail(result.substring(7));
+			}
+			else
+			{
+			
+				var objResult = JSON.parse(result);
+				if(objResult.length == 0)
+				{
+					info_pop_fail("Your search term did not return any record. Please try another term.");
+					return;
+				}
+				
+				var header = '';//'<thead>';
+				header += '   	<tr id="tblOrderReportHeaderRow"  class="headerRow ">';
+				header += '   		<td class="dataCell">Type</td>';
+				header += '   	   	<td class="dataCell">Name</td>';
+				header += '   	   	<td class="dataCell">Company</td>';
+				header += '   	   	<td class="dataCell">Phone Numbers</td>'; 
+				header += '   	   </tr>';
+				//header += '   </thead>';
+				$("#searchResults").append(header);
+								              	
+				for (var i = 0; i < objResult.length; i++) 
+				{
+					var recName = objResult[i].ObjectName;
+					var recId = objResult[i].ObjectId;
+					var recType = objResult[i].ObjectType;
+					var phoneNumbers = '';
+					var rowData = '';
+					var NameNFunction = '';
+					// add API Name for RelatedTo Fuctionality
+					var ObjectApiName = objResult[i].ObjectApiName;
+					
+					for(var j = 0 ; j < objResult[i].ObjectPhone.length ; j++)
+					{
+						var p = objResult[i].ObjectPhone[j].PhoneType ;
+						
+						NameNFunction = removeSpecialChars(recName);	
+						//phoneNumbers += p + ': <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult[i].ObjectPhone[j].PhoneNumber+'\',\''+recName+'\',\''+recType+'\');">'+objResult[i].ObjectPhone[j].PhoneNumber+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+						phoneNumbers += p + ': <a title="click to add this number to the conference" href="javascript:addToConference(\''+recId+'\',\''+objResult[i].ObjectPhone[j].PhoneNumber+'\',\''+NameNFunction+'\',\''+recType+'\' ,\''+ObjectApiName+'\');">'+objResult[i].ObjectPhone[j].PhoneNumber+'<img src="/img/btn_dial_inline.gif" width="16" height="10" ></a>' + '<br />';
+					}
+					
+					rowData += '<tr onfocus="if (window.hiOn){hiOn(this);}" onblur="if (window.hiOff){hiOff(this);}" onmouseout="if (window.hiOff){hiOff(this);} " onmouseover="if (window.hiOn){hiOn(this);} " class="dataRow even  first">';   
+					rowData += '    <td class="dataCell">'+recType+'</td>';
+					
+					//rowData += '    <td class="dataCell">'+recName+'</td>';
+				    //check if the name contains the special character '<' then replace it because it make <test auto tag </test>
+				    if(recName.indexOf('<') > -1)
+				    {
+						NameNFunction = recName.replace(/</g, "&lt;");
+						rowData += '    <td class="dataCell">'+NameNFunction+'</td>';
+					}
+					else
+						rowData += '    <td class="dataCell">'+recName+'</td>';
+				
+					//fix company name error 
+					var CompanyName = ''
+					if(objResult[i].Company != null)
+					{
+						CompanyName = objResult[i].Company;
+						//CompanyName = CompanyName.replace(/</g, "&lt;");
+						CompanyName = removeSpecialChars(CompanyName,true);	
+						rowData += '<td class="dataCell">'+CompanyName+'</td>';
+					}
+					else
+						rowData += '<td class="dataCell">&nbsp;</td>';
+					 
+					rowData += '    <td class="dataCell">'+phoneNumbers+'</td>'; 
+					rowData += '</tr>';
+					
+					$("#searchResults").append(rowData);
+				}
+			}
+			
+			} else if (event.type === 'exception') {
+				info_pop_fail(event.message);
+				document.getElementById("result").innerHTML = 
+					'exception: '+ event.message + "<br/>\n<pre>" + event.where + "</pre>";
+			} else {
+				info_pop_fail(event.message);
+				document.getElementById("result").innerHTML = 'no exception: '+event.message;
+			}
+		
+		}
+        
+         //Yasir Conference Call
+        var JsonResult = '';
+        //function addToConference(recId, phoneNumber, recName , recType)
+        function addToConference(recId, phoneNumber, recName , recType , recApiName)
+        {
+        	recType = recApiName;
+        	  
+        	var ItemExists = '{!ItemExists}';
+			
+			if(ItemExists == "false")
+			{
+	        	//add items in the local storage that is added to the conference 
+	        	var itemset = '';
+	        	recId = recId.substr(0,recId.length-3);
+	        	
+	        	recName = removeSpecialChars(recName,true);	
+	        	
+				var getlocalstorage = localStorage.getItem('ConferenceRelatedTo_'+confSessionId);
+				if (getlocalstorage === null || getlocalstorage.length === 0)
+	        		itemset = '{"ObjectName": "'+recType+' : '+recName+'","ObjectID":"'+recId+'"}';
+	        	else
+	        		itemset = "," +'{"ObjectName": "'+recType+' : '+recName+'","ObjectID":"'+recId+'"}';
+	        	
+	        	getlocalstorage = getlocalstorage == null ? "" : getlocalstorage ;   
+	        	getlocalstorage = getlocalstorage + itemset;
+				localStorage.setItem('ConferenceRelatedTo_'+confSessionId , getlocalstorage);
+       		}
+       		else
+       		{
+       			try
+       			{
+       				$.cookie('agentCall_ConferenceObjectName', recType, { expires: 1, path: '/' });
+       				$.cookie('agentCall_ConferenceObjectValue', removeSpecialChars(recName,true), { expires: 1, path: '/' });
+       				$.cookie('agentCall_ConferenceObjectID', recId, { expires: 1, path: '/' });
+       				
+	       			/*window.opener.ObjectName = recType;
+	       			window.opener.ObjectValue = removeSpecialChars(recName,true);
+	       			window.opener.ObjectID = recId;
+	       			window.opener.GetRelatedTo();*/
+       			}
+       			catch(e){}       			
+       		}
+        	addToConf(phoneNumber);
+        }
+         //Yasir CRM Sync v2 JIRA Issue SFC-59 
+        function isNumberKey(evt)
+               {
+                  var charCode = (evt.which) ? evt.which : event.keyCode;
+                  
+                  
+                  if(charCode == 35 || charCode == 42)
+                    return true;
+                    
+                  if (charCode != 46 && charCode > 31 
+                        && (charCode < 48 || charCode > 57)
+                     )
+                     return false;
+                    
+                    var callnumber = $('#callNum').val();
+                    //Yasir CRM Sync v2 JIRA Issue SFC-59
+                    //if(callnumber.length > 13) 
+                    if(callnumber.length > 19)
+                        return false;
+                        
+                  return true;
+               }
+    </script>
+    
+    <div style="background-color:lightgrey; width:100%; vertical-align: bottom;">
+    	&nbsp;&nbsp;<img width="149" height="59" src="https://uk.portal.cloudcall.com/images/cloudcall.png" />
+    	<h1 style="vertical-align: bottom;">Conference Call</h1> 
+    </div>
+    <table border="0" cellpadding="10" cellspacing="0">
+    <tr>
+    
+	<td style="vertical-align: top; width: 550px">
+		<div style="font-size: 12px;">
+			<apex:pageBlock >
+	           
+		    	<!-- <apex:pageBlockSection columns="1" title="" collapsible="false" id="partPanel"  > -->
+			    
+				<div style="height: 150px; overflow-y: scroll; border: 1px solid #ccc;">
+			    	<table class="list" width="500px" border="0" cellpadding="4" cellspacing="0" style="font-size: 12px;" id="tableCLDs">
+			           
+			        </table>
+		        </div>
+		        <!-- </apex:pageBlockSection> -->
+	        </apex:pageBlock>
+    	</div>
+    </td>
+    
+    <td style="vertical-align: top;">
+    	
+    	<div style="width:200px" >
+    	
+    		<div class="number">
+    			<input type="text" name="number" id="callNum" value="" onkeypress="return isNumberKey(event)" />
+    			<div title="clear number" id="clear" onClick="clearNumber();">X</div>
+    		</div>
+    		<!-- 
+	        <div>
+				<input type="text" name="number" id="callNum" value="" style="font-size:15px" />
+			</div>
+			-->
+			<ul class="keypad">
+				<li onClick="enterNumber('1');">1</li>
+				<li onClick="enterNumber('2');">2</li>
+				<li onClick="enterNumber('3');">3</li>
+				<li onClick="enterNumber('4');">4</li>
+				<li onClick="enterNumber('5');">5</li>
+				<li onClick="enterNumber('6');">6</li>
+				<li onClick="enterNumber('7');">7</li>
+				<li onClick="enterNumber('8');">8</li>
+				<li onClick="enterNumber('9');">9</li>
+				<li onClick="enterNumber('*');">*</li>
+				<li onClick="enterNumber('0');">0</li>
+				<li onClick="enterNumber('#');">#</li>
+			</ul>
+			<br />
+			<ul class="keypad2">
+				
+				<li class="dial" onClick="addToConf();" title="add number to conference call">Add to Conference</li>
+				
+				<li onClick="deleteNumber();" title="delete last digit">&larr;</li>
+     			<li onClick="pauseRecording();" id="liCallRecording" title="pause call recording">||</li>
+				
+				
+				<li title="end conference call" id="cmdHangup" class="hangup" onClick="hangupCall();" >End Conference</li>
+			</ul> 
+		
+		</div>
+	</td>
+	
+    </tr>
+    </table>
+    
+    <div style="font-size: 12px;">
+	<apex:pageBlock >
+           
+    	<apex:pageBlockSection columns="2" title="Search Records and add to Conference" collapsible="false" id="searchPanel" >
+	     	<table>
+	     		<tr>
+	     		<td><input type="text" id="searchBox" size="30" title="starts with" style="font-size:16px;" /></td>
+	     		<td><button type="button" onclick="searchRecord()" style="height:25px; width:100px">Search</button></td>
+	     		</tr>
+	     	</table>
+     	
+    	</apex:pageBlockSection>
+           
+	    <!-- <apex:pageBlockSection columns="1" title="Search Results" collapsible="false" id="resultPanel"  > -->
+			<div style="height: 190px; overflow-y: scroll; border: 1px solid #ccc;">
+			    <table cellspacing="0" cellpadding="0" border="0" id="searchResults" class="list "> 
+			       
+			
+			       
+				</table> 
+			</div>
+	            
+		<!-- </apex:pageBlockSection> -->
+          
+	</apex:pageBlock>
+    </div>
+    
+	<script type="text/javascript">
+        loadParticipants();
+    </script>
+	<!-- <br /><br /> -->
+    <!-- <button onclick="sayHello('Jude');">Say Hello</button><br/> -->
+    <div id="result" style="display:none">[Results]</div>
+	<div id="divBlockMessage" style="display:none; cursor: default; width: 150px"> 
+        Please wait...
+	</div>
+	
+	<div id="info_box" class="clear"></div>
+	<div id="info_pop_box"></div>
+	<input type="hidden" id="recordingPaused" value="false" />
+</apex:page>

@@ -1,0 +1,25 @@
+<apex:page controller="PersonAccountsUpdateController" sidebar="false" showHeader="false">
+
+ <br/> <br/><br/>
+ <div class="header">
+    <center><img src="{!$Resource.upstartlogo}" width="20%"/></center>
+  </div> <br/>
+ <b><center> Your SSN is not updated in our systems.  </center> </b>  <br/> <br/>
+ <b> <center> Please fill the below form to update your details in our system. </center> </b>
+    <center>
+    <br/> <br/> <br/> <br/>
+    <apex:form id="frm" >
+        <apex:panelGrid >
+        <apex:inputtext value="{!Name}"> <b> Name : </b> </apex:inputtext>  <br/>
+        <apex:inputtext value="{!Email}"><b> Email : </b></apex:inputtext> <br/>
+        <apex:inputsecret value="{!SSN}"><b> SSN &nbsp;&nbsp;:&nbsp;</b> </apex:inputsecret>  <br/>
+        <apex:commandButton value="Submit" action="{!submit}"/>
+        
+        </apex:panelGrid>
+
+
+    </apex:form>
+    
+    </center>
+ 
+</apex:page>

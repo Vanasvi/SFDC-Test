@@ -1,0 +1,65 @@
+<apex:page controller="synety.GetStartedController" action="{!init}"><!-- Shumaila For Add New Case -->
+<!-- Shumaila CRM Sync v2 JIRA Issue SFC-89 -->
+<apex:outputPanel rendered="{!$CurrentPage.parameters.newid!='' || $CurrentPage.parameters.isdtp!=''}">
+<script type="text/javascript">
+
+    window.close();
+</script>
+</apex:outputPanel>
+
+<apex:outputPanel rendered="{!$CurrentPage.parameters.newid==''}">
+<html  lang="en">
+    <head>
+    
+
+    <title>Getting started - SYNETY CloudCall for Salesforce</title>
+
+
+    
+</head>
+
+
+<body>
+    <apex:image value="{!URLFOR($Resource.synety__synety_logo)}"/>
+<!-- Body content row -->
+
+<div style="font-family:  'Lucida Sans'; padding-right: 30px; padding-left: 30px; padding-top: 30px;">
+<strong style="font-size:large">Thank you for installing CloudCall for Salesforce.</strong>
+
+<br /><br />
+    <div style="font-size:medium">
+    Next Steps: 
+    </div>
+
+    <ul style="font-size:small">
+    1. New to SYNETY CloudCall?  If you haven't already signed up for a CloudCall account, 
+        please either signup at 
+        <a target="_blank" href="https://www.synety.com/pricing/">https://www.synety.com/pricing/</a> 
+        and select a plan according to your needs or call +44 113 416 6003 where our sales team will be happy to activate you.
+    </ul>
+    <ul style="font-size:small">
+    2. Once activated, you will need to add your Synety accounts into Salesforce which you can do by either following our Quick Start Guide
+  which can be downloaded at 
+        <a target="_blank" href="https://www.synety.com/support/how-to/PDFfiles/product_guide-SalesForceCRM.pdf">https://www.synety.com/support/how-to/PDFfiles/product_guide-SalesForceCRM.pdf</a>
+            or by calling our Support Team on +44 113 416 6028, who will be happy to talk you through this quick process.
+
+    </ul>
+    
+    <ul style="font-size:small">
+    3. You can also follow our "how to" video to configure this&nbsp;
+      
+        <a target="_blank" href="https://www.youtube.com/watch?v=4o94a0fmXgM">https://www.youtube.com/watch?v=4o94a0fmXgM</a>.
+            
+
+    </ul>
+
+
+
+</div>
+
+
+        
+
+</body></html>
+</apex:outputPanel>
+</apex:page>

@@ -1,0 +1,838 @@
+<apex:page id="pg" controller="synety.AgentPanelController" showHeader="false" sidebar="false" 
+						action="{!callNotesInit}"			standardStylesheets="false">
+
+	<head>
+		<title>Call Notes - SYNETY CloudCall</title>
+	</head>
+	<script src="/support/api/29.0/interaction.js"></script>
+	
+	<link rel="stylesheet" href="/resource/synety__dialerStyles/css/normalize.min.css?v40" />
+	<link rel="stylesheet" href="/resource/synety__dialerStyles/css/main.css?v40" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="/resource/synety__dialerStyles/js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
+    <script src="https://malsup.github.io/jquery.blockUI.js"></script>
+    
+    <!-- Import jQuery from google CDN, could also be static resource-->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" />
+    <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+    <script src="/resource/synety__jqueryCookie?v40"></script>
+	<script src="https://malsup.github.io/jquery.blockUI.js"></script>
+	
+	<script src="/resource/synety__AgentCallNotes_Popup?v40" type="text/javascript"></script>
+	
+	 <style>
+		 #info_pop_box { 
+				   	display: none; 
+				   	position: fixed; 
+				   	bottom: 25px; 
+				   	right: 10px; 
+				   	padding: 15px; 
+				   	z-index: 99999; 
+				   	font-size: 10px; 
+				}
+				.info_pop_yellow { 
+					background: lightyellow; 
+				}
+				.info_pop_red { 
+					background: lightpink; 
+				}
+	 </style>
+    <script>
+    	var namespacePrefix = "{!if($Organization.Id=='00DG0000000Ce3tMAC','','synety.')}";
+    	var SynetyConfigDetails = '{!SynetyConfigDetails}';
+    	var sessionId = '{!sessionId}';
+    	var phNum = '{!phNum}';
+	    var campName = JSON.parse('{!IsCampName}');
+	    var callType = '{!callType}';
+	    var cliSearchResult = '{!cliSearchResult}';
+    	var emptySearchResult = JSON.parse('{"searchResult": []}');
+    	var isNoteRequired = {!isNoteRequired};
+	    var isCallCatRequired = {!isCallCatRequired};
+	    var hideCategory_Subject = {!hideCategory_Subject};
+	    var clickCallRecordId = '{!clickCallRecordId}';
+	    var sClickCallRecord = '{!clickCallRecord}';
+	    var clickCallRecord = '';
+	    var sClickCallPageInfo = '{!clickCallPageInfo}';
+	    var clickCallPageInfo = '';
+	     //Shumaila Related To
+	    var CurrentContact = '';
+	    var CallSessionID = sessionId;
+	    var sDropDownRecord = '{!dropDownRecord}';//Shumaila JIRA SFC-2
+	    var sNewCallRecord = '{!newCallRecord}';//Shumaila JIRA SFC-18
+	    var IsContactRecord = false; //Shumaila for add new Case
+        var sDDINumb = '{!DDINumb}';  //Shumaila for add new Case
+        var campAccountNumber = '{!campAccountNumber}'; //Shumaila add New Case - Campaign
+	    //Shumaila CRM Sync v2
+	    var SelectType = ''; 	
+		var str = '';
+		var url = "";
+		var phoneNumberVar = '';
+		var Record = "";
+		var Prefix = 'synety__'; //Add NameSpace Here  
+		var IsNewCustomer = false;
+		//var sCallNotes = '';//Shumaila CRM Sync v2 JIRA Issue SFC-58
+		var lstLookupEntities = '{!lstLookupEntities}'; //Shumaila RelatedTo Free
+		var IsRelatedToObject = false;//Shumaila RelatedTo Free
+		var FromConference = JSON.parse('{!FromConference}'); //JIRA Issue SFC-219
+		var lstRelationshipEntities = '{!lstRelationshipEntities}';//JIRA Issue SFC-219
+		
+		//JIRA Issue SFC-223
+        var IsJSONEnable = JSON.parse('{!IsJSONEnable}');
+        var IsDetailNotesEnable = JSON.parse('{!IsDetailNotesEnable}');
+       	var IsDetailCategoryEnable = JSON.parse('{!IsDetailCategoryEnable}');
+       	var IsDetailSubjectEnable = JSON.parse('{!IsDetailSubjectEnable}');
+       	var IsDetailCust1Enable = JSON.parse('{!IsDetailCust1Enable}');
+        var IsDetailCust2Enable = JSON.parse('{!IsDetailCust2Enable}');
+          
+       	var Detailcust1Label = '{!Detailcust1Label}';
+        var Detailcust2Label = '{!Detailcust2Label}';
+        var DetailCust1Type = '{!DetailCust1Type}';
+        var DetailCust2Type = '{!DetailCust2Type}';
+        //********************************   
+        
+         //JIRA Issue SFC-288
+          var IsDetailcust1Required = JSON.parse('{!IsDetailcust1Required}');
+		  var IsDetailcust2Required = JSON.parse('{!IsDetailcust2Required}');
+          var IsSubjectRequired = JSON.parse('{!IsSubjectRequired}');
+          //************************
+		 
+    	 $(function (){
+    	 			getCallNotes();
+    	 			if(phNum != '')
+    	 			{
+    	 				document.getElementById('cli').innerHTML = phNum;
+    	 				debugLog('##phNum' + phNum);
+    	 				if(callType=='Inbound' || callType=='InboundCampaign') 
+    	 					document.getElementById('callStatus_Cli').className = 'incoming';
+    	 				else
+    	 					document.getElementById('callStatus_Cli').className = 'outgoing';
+    	 				
+    	 			}
+    	 			
+    	 			if(campName)
+    	 			{
+    	 				document.getElementById('campName').style.display='block';
+    	 				//document.getElementById('campName').innerHTML = '{!campName}';
+    	 			}
+    	 			else
+    	 			{
+    	 				document.getElementById('campName').style.display='none';
+    	 			}
+    	 			
+    	 			if(clickCallRecordId != '')
+					{
+						debugLog('##clickCallRecordId' + clickCallRecordId);
+						clickCallRecord = JSON.parse(sClickCallRecord);
+						
+						debugLog('##clickCallRecord' + clickCallRecord);
+						var val = clickCallRecord.ObjectLable;
+					
+						if (val == '')
+							val = clickCallRecord.object;
+						
+						debugLog('##val: Object = ' + val);
+						//JIRA Issue SFC-182
+						var recordTitle = val.trim() + " : " + AdjustSpecialCharacters(clickCallRecord.objectName) ;//Shumaila CRM Sync v2 JIRA Issue SFC-130
+						document.getElementById('divClickCallContact').innerHTML=recordTitle;
+						debugLog('##recordTitle' + recordTitle);
+						clickCallPageInfo = JSON.parse(sClickCallPageInfo);
+						
+						//Shumaila Related To
+						debugLog('##Contact' + clickCallRecord.object);
+						//Shumaila RelatedTo Free
+						IsRelatedToObject = false;
+						IsInLookupEntities(clickCallRecord.object);
+						if(IsRelatedToObject)
+						{
+							document.getElementById('divRelatedToPopUp').style.display = 'block';
+							
+							if(clickCallRecord.object.toLowerCase() == 'contact')
+								document.getElementById('cmdSaveNote_Case').style.display = 'block'; //Shumaila For add new case							
+							
+							CurrentContact = 'defualt';
+							AppendRelatedTo();
+						}
+						//**************
+					}
+					else
+					{
+						debugLog('##phNum CliSearch_remote=== ' + phNum);
+						synety.AgentPanelController.CliSearch_remote(phNum, 
+			            	CLISearchCallBack, 
+				            {escape: false}
+			            );
+	    	 		}
+	    	 	if(sNewCallRecord != '')
+    	 			LoadNewRecordValues();//Shumaila JIRA SFC-18
+	    	 	//Shumaila JIRA SFC-2
+				GetDropDownValues();
+    	 });
+    	 
+    	 function getCallNotes()
+    	 {
+    	 	if (typeof(Storage) != "undefined")
+			{
+				if(sessionId != '')
+				{
+					//Shumaila CRM Sync v2 JIRA Issue SFC-58
+					/*var callNotes = localStorage.getItem("callNotes_"+sessionId);
+					if(callNotes != null)
+					{
+						//alert(callNotes);
+						document.getElementById("pg:frm:txtNote").value = callNotes;
+					} 
+					if(sCallNotes != null)
+					{
+						document.getElementById("pg:frm:txtNote").value = '{!CallNotes}';
+					}*/
+					//**********Shumaila CRM Sync v2 JIRA Issue SFC-58***********
+				}
+			}
+			else
+			{
+				debugLog("Sorry, the browser does not support Web Storage...");
+			}
+    	 }
+    	 //Shumaila CRM Sync v2
+		function UnKnownNumberCLICallBack(result, event)
+		{
+			if(event.status)
+			{
+				debugLog("lstContactType## " +result);
+				$('#lstContactType').empty();
+				document.getElementById('divSelectContact').style.display="block";				
+				var MainValue = JSON.parse(result);
+				$.each(MainValue, function(key,value) 
+				{			
+					$('#lstContactType').append('<option value="'+value.Value+'">'+value.Name+'</option>');
+				} );
+				var newRecord = JSON.parse(sNewCallRecord);		
+				debugLog("sNewCallRecord ====## " +newRecord.SelectValue);
+				document.getElementById('lstContactType').value = newRecord.SelectValue;
+				SelectType = newRecord.SelectValue;			
+			}
+		}
+		//*******************************
+		
+//Transfered to JS file.......... Start.... Shumaila 
+		function processCLISearchResponse(_contactInfo)
+		{
+			//If no match found 
+			if (_contactInfo.searchResult.length == 0) 
+			{
+				//document.getElementById('recName').innerHTML = 'Not Found';
+				//Shumaila CRM Sync v2
+				//document.getElementById('divSelectContact').style.display="block";
+				synety.AgentPanelController.UnKnownNumberCLI_remote( 
+			            	UnKnownNumberCLICallBack, 
+				            {escape: false}
+			            	); 
+			}
+			else 
+				processCLISearch(_contactInfo)
+		}		
+//Transfered to JS file.......... END.... Shumaila 		
+		function debugLog(m) {
+			//console.log(m);
+			m = "[" + new Date().toTimeString() + "] " + m;
+			
+			if(window.console)
+		    {
+				if (window.console.debug) 
+				{
+					window.console.debug(m);
+				} 
+				else if (window.console.log) 
+				{
+					window.console.log(m);
+				}
+			}
+		}
+			
+		//Shumaila CRM Sync v2		
+		function openNewRecordWindow(recordType)
+		{
+			IsNewCustomer = true;
+			//Shumaila CRM Sync JIRA Issue SFC-53
+			if(recordType == 'Select Record Type...')
+        	{
+        		alert('Please select a record type');
+        	}
+        	else
+				synety.AgentPanelController.GetObjectPrefix_remote(recordType, 
+	            	GetObjectPrefixCallBack, 
+		            {escape: false}
+	            	);			
+		}
+		function GetObjectPrefixCallBack(result, event)
+		{
+			if(event.status)
+			{				
+				var GetResult = JSON.parse(result);
+				RemoveLocalStorage();
+				
+				Record = GetResult.recordType;
+				str = encodeURIComponent("/apex/"+Prefix+"agentNewRecord?type="+Record);
+				phNum = document.getElementById('cli').innerHTML;
+				phNum = GetNumber(phNum);
+				
+				url = '/'+GetResult.recordPrefix+'/e';
+				phoneNumberVar = '';
+				
+				if(Record.toLowerCase() == "lead")					
+					phoneNumberVar = '&lea8='+encodeURIComponent(phNum);		
+				else if(Record.toLowerCase() == "contact")
+					phoneNumberVar = '&con10='+encodeURIComponent(phNum);		
+				else if(Record.toLowerCase() == "account")
+					phoneNumberVar = '&acc10='+encodeURIComponent(phNum);
+				
+				synety.AgentPanelController.GetRecordType_remote(Record, 
+	            	GetRecordTypeCallBack, 
+		            {escape: false}
+	            	);
+			}
+			else
+			{
+				alert('There is an error in process');
+				return;
+			}
+		}		
+		  
+		var getURL = '';
+		function GetRecordTypeCallBack(result, event)
+		{					
+			//Shumaila CRM Sync V2
+			getURL = url+'?retURL='+str+'&isdtp=lt&nooverride=1&saveURL='+str;
+					
+			if(event.status)
+			{	
+				if(result != null)
+				{
+					//shumaila CRM Sync v2 JIRA Issue SFC-125/138
+					if(urlToOpen.indexOf("500/e") > 0) 
+					{
+						OpenWindowForCase(true);
+					}
+					else
+					{
+						//Shumaila CRM Sync v2 for Record Type
+						var GetRecord = '';
+						if(result == "true")
+							GetRecord = Record;
+						else
+							GetRecord = result;
+						if(GetRecord == '')
+						{
+							getURL = url+'?retURL='+str+'&isdtp=lt&nooverride=1&saveURL='+str;
+						}
+						else
+						{
+							getURL = "/setup/ui/recordtypeselect.jsp?isdtp=mn&ent="+GetRecord+"&retURL="+str+"&save_new_url="+url+'?retURL='+str+'&isdtp=lt&nooverride=1&saveURL=';
+					 		getURL = getURL+ str ;//Shumaila CRM Sync V2
+						}						
+					}					
+				}
+				else
+				{
+					//shumaila CRM Sync v2 JIRA Issue SFC-125/138
+					if(urlToOpen.indexOf("500/e") > 0) 
+					{
+						OpenWindowForCase(false);
+					}
+					else
+					getURL = url+'?retURL='+str+'&isdtp=lt&nooverride=1&saveURL='+str;
+				}				 
+			}
+			
+			
+			//Shumaila CRM Sync V2
+			if(phoneNumberVar != '')
+				getURL += phoneNumberVar;
+			
+			if(IsNewCustomer != true)
+				window.close(); 
+			
+			IsNewCustomer = false; 
+			debugLog('URL for recordTypes: '+getURL + " :str: " + str+ " :PhoneNumber: "+phoneNumberVar);
+			window.open(getURL,"newRecordWindow","width=600,height=500");
+		}
+		//**********************************	
+	
+		var urlToOpen = ''; //Shumaila for add new Case
+		var jsonParam = '';
+		function SaveCallNotes(followupAction)
+		{
+			if(sessionId != '')
+			{
+				//var CatList = document.getElementById('pg:frm:lstCat'); //Shumaila for add new Case
+				var CatId = CatList.value;
+				var CatName = CatList.options[CatList.selectedIndex].innerHTML;
+				if(CatId == '')
+					CatName = '';
+					
+				var notes = document.getElementById('pg:frm:txtNote').value;
+				var sRecordType = '';
+				var RecordId = '';
+				var s_isInboundCall = 'false';
+				//alert(CatName);
+				notes=sanitizeJSON(notes);
+				CatName=sanitizeJSON(CatName);
+				debugLog('notes: '+notes);
+				debugLog('sessionId: '+sessionId);
+				//debugLog('currentCallStatus.SessionId: '+currentCallStatus.SessionID);
+				jsonParam = '';
+				var selRecord = getSelectedRecord();
+				sRecordType = selRecord[1];
+				RecordId = selRecord[0];
+				
+				if(callType == 'Inbound')
+				{
+					s_isInboundCall = 'true';
+				}
+				
+				GetCLICLD ();//Shumaila CRM Sync v2 Call subject field mapping
+				
+				var callNumber = document.getElementById('cli').innerHTML;
+				callNumber = GetNumber(callNumber);
+				
+				if(RecordId.length > 15 && RecordId.length<18)
+					RecordId = RecordId.substring(0,15);
+					
+				jsonParam = '{"SessionId":"'+sessionId+'","ContactId":"","Notes":"'+notes+'","CategoryId":"'+CatId+'"';
+				jsonParam += ',"RecordId":"'+RecordId+'","sRecordType":"'+sRecordType+'","CatName":"'+CatName+'","PhoneNumber":"'+callNumber+'","isInboundCall":"'+s_isInboundCall+'"';
+				jsonParam += ',"CallFrom":"'+CLI+'","CallTo":"'+CLD+'"';//Shumaila CRM Sync v2 Call subject field mapping
+				if(clickCallRecord != '')
+				{
+					jsonParam += ',"PageObjectId":"'+clickCallPageInfo.objectId+'","PageObjectType":"'+clickCallPageInfo.object+'"';	
+				}
+				
+				//Shumaila	Related to
+				if (document.getElementById('divRelatedToPopUp').style.display == 'block')
+				{					
+					debugLog('##RelatedToList## '+ RelatedToId + ' : '+ RelatedToName);
+					if(RelatedToId != 'Select')
+					{jsonParam +=  ',"RelatedToName":"'+AdjustSpecialCharacters(RelatedToName)+'","RelatedToId":"'+RelatedToId+'"';}	
+				}
+				//**************************
+				
+				//*************JIRA Issue SFC-223********************************
+				jsonParam += ',"isNoteRequired":"'+isNoteRequired+'","isCallCatRequired":"'+isCallCatRequired+'"';
+				if(IsJSONEnable)
+				{
+					jsonParam += ',"IsDetailSubjectEnable":"'+IsDetailSubjectEnable+'","IsDetailCust1Enable":"'+IsDetailCust1Enable+'","IsDetailCust2Enable":"'+IsDetailCust2Enable+'"';
+				
+					var CallSubject = 'SYNETY Call';
+					if(document.getElementById('txtCallSubject').value !='')
+						CallSubject += ' - '+AdjustSpecialCharacters(document.getElementById('txtCallSubject').value);
+				
+					if(IsDetailSubjectEnable)
+						jsonParam += ',"DetailSubjectValue":"'+CallSubject+'"';
+					if(IsDetailCust1Enable)
+					{
+						jsonParam += ',"CallDetailsCust1Value":';
+						if(localStorage.getItem('CallDetailsCust1_'+sessionId) == 'Cust1SingleText')
+							jsonParam += '"'+AdjustSpecialCharacters(document.getElementById('txtDetailCust1').value)+'"';
+						else if(localStorage.getItem('CallDetailsCust1_'+sessionId) == 'Cust1MultiText')
+							jsonParam += '"'+AdjustSpecialCharacters(document.getElementById('pg:frm:txtMultiDetailCust1').value)+'"';
+						else if(localStorage.getItem('CallDetailsCustDD1_'+sessionId,'Cust1DropDown'))
+							jsonParam += '"'+document.getElementById('pg:frm:lsDetailcust1').value +'"';
+					}
+						
+					if(IsDetailCust2Enable)
+					{
+						jsonParam += ',"CallDetailsCust2Value":';
+						if(localStorage.getItem('CallDetailsCust2_'+sessionId) == 'Cust2SingleText')
+							jsonParam += '"'+AdjustSpecialCharacters(document.getElementById('txtDetailCust2').value)+'"';
+						else if(localStorage.getItem('CallDetailsCust2_'+sessionId) == 'Cust2MultiText')
+							jsonParam += '"'+AdjustSpecialCharacters(document.getElementById('pg:frm:txtMultiDetailCust2').value)+'"';
+						else if(localStorage.getItem('CallDetailsCustDD2_'+sessionId,'Cust2DropDown'))
+							jsonParam += '"'+document.getElementById('pg:frm:lsDetailcust2').value +'"';
+					}				
+				}
+		//*************JIRA Issue SFC-223********************************
+				jsonParam += '}';
+				debugLog('SaveCallNotes Params:'+jsonParam);
+				
+				synety.AgentPanelController.SaveCallNotes_remote(encodeURIComponent(jsonParam), 
+	            	SaveCallNotesCallBack, 
+		            {escape: false}
+	            );
+	            
+	            $.blockUI({
+					message: 'Please wait while processing request...',
+					centerY: true
+					
+				});
+				
+				//var urlToOpen = ''; Shumaila for add new Case
+				if(followupAction == 'create task')
+				{
+					if(sRecordType.toLowerCase() == 'lead' || sRecordType.toLowerCase() == 'contact')
+					{
+						urlToOpen = '/00T/e?who_id=' + RecordId;
+						//Shumaila for SFC-10
+						if(RelatedToId != '' && RelatedToId !='Select')
+							urlToOpen += '&what_id=' + RelatedToId;
+					}
+					else
+					{
+						urlToOpen = '/00T/e?what_id=' + RecordId;
+					}		
+				}
+				else if(followupAction == 'create event')
+				{
+					if(sRecordType.toLowerCase() == 'lead' || sRecordType.toLowerCase() == 'contact')
+		            {
+		                urlToOpen = '/00U/e?who_id=' + RecordId;
+		                //Shumaila for SFC-10
+						if(RelatedToId != '' && RelatedToId !='Select')
+							urlToOpen += '&what_id=' + RelatedToId;
+		            }
+		            else
+		            {
+		                urlToOpen = '/00U/e?what_id=' + RecordId;
+		            }
+				}
+				
+				 //Shumaila for add new Case
+                else if(followupAction == 'create case')
+                {
+                    if(sRecordType.toUpperCase() == 'CONTACT')
+                    {
+                        urlToOpen = '/500/e?def_contact_id=' + RecordId;
+                    }           
+                }
+                //*******************
+                if(urlToOpen != '' && followupAction != 'create case')//Shumaila for add new Case
+                {
+                    var saveURL = encodeURIComponent("/apex/synety__GetStarted");
+                    
+                    urlToOpen += '&isdtp=lt&nooverride=1&retURL='+saveURL+'&saveURL='+saveURL;
+                    
+                    
+                    window.open(urlToOpen,"newActivityWindow","width=900,height=500");  
+                }
+            }
+        }
+		
+		 function SaveCallNotesCallBack(result, event)
+        {
+            $.unblockUI();
+            
+            if (event.status) 
+            {
+            	if(result.indexOf('ERROR') == -1)
+            	{
+            		debugLog('SaveCallNotesCallBack: ' + result);
+	                document.getElementById('divCallNotes').style.display = 'none';  
+	                //Shumaila Related To
+	                callLastSession = sessionId;
+	                RemoveLocalStorage();           
+	                //window.close();   
+	                //Shumaila For Add New Case
+	                var resultNotes = JSON.parse(result);
+	                
+	                debugLog('urlToOpen: ' + urlToOpen);
+	                //shumaila CRM Sync v2 JIRA Issue SFC-125/138
+	                if(urlToOpen.indexOf("500/e") > 0) 
+	                {
+	                  CaseContactAccountID = resultNotes.ContactAccountID;
+					  CasTaskID = resultNotes.TaskId;
+					  
+					  synety.AgentPanelController.GetRecordType_remote('Case', 
+		            	GetRecordTypeCallBack, 
+			            {escape: false}
+		            	);           
+	                }
+	                else
+	                    window.close(); 
+	                //*********************
+            	}
+            	else
+            	{
+            		debugLog('no exception: '+event.message);
+	                urlToOpen = '';
+	              	info_pop_fail(result);
+	                jsonParam = '';
+            	}            	
+                
+            } else if (event.type === 'exception') {
+                debugLog('SaveCallNotesCallBack: exception: '+ event.message);
+                urlToOpen = '';
+                if(result == null && result == '')
+                	info_pop_fail(event.message);
+                else
+                	info_pop_fail(result);
+                jsonParam = '';
+            } else {
+                debugLog('no exception: '+event.message);
+                urlToOpen = '';
+              	info_pop_fail(result);
+                jsonParam = '';
+            }
+        }
+       
+       function CLISearchCallBack(result, event)
+        {
+        	$.unblockUI();
+        	
+        	if (event.status) {
+                debugLog('CLISearchCallBack: ' + result);
+                if(result != '')
+				{
+					var contactInfo = JSON.parse(result);
+					processCLISearchResponse(contactInfo);
+				}
+				else
+					processCLISearchResponse(emptySearchResult);
+					    
+            } else if (event.type === 'exception') {
+            	processCLISearchResponse(emptySearchResult);
+                debugLog('CLISearchCallBack: exception: '+ event.message);
+            } else {
+            	processCLISearchResponse(emptySearchResult);
+                debugLog('no exception: '+event.message);
+            }
+        }
+
+		window.onbeforeunload = function(e) 
+	    {
+	    	if(document.getElementById('divCallNotes').style.display != 'none' && 
+	    		((hideCategory_Subject == false && isCallCatRequired == true) || isNoteRequired == true)
+	    	  && IsNewCustomer != true
+	    	  )
+	    	{	
+	    		return 'You have not saved the call notes yet.';
+	    	}	    	
+	    };
+		//***********************
+    </script>
+     <!-- Shumaila CRM Sync v2 JIRA Issue SFC-103 -->
+	   <script id="CurrentContact">	   	 
+   		function SetCurrentContact()
+        {
+        	var selectedValue = document.getElementById('hiddenSelectId').value;
+			if(selectedValue != '')
+				CurrentContact =  selectedValue;
+				
+        	/*var selectedValue = document.getElementById('txtSearchRecord').value;
+			if(selectedValue != '')
+				CurrentContact =  document.getElementById('txtSearchRecord').value;
+        	*/
+        	$('#ddl_RelatedTo').empty();
+			$('#ddl_RelatedTo').append('<option value="Select">Select...</option>');
+			//JIRA Issue SFC-219
+			
+			if(FromConference)
+			{
+				ConferenceCount = "0"; 
+				ConferenceRelatedToCount = "0"
+				ConferenceRelatedToIDs = '';
+				SetConferenceRelatedTo(sessionId);
+			}				
+			else
+        		AppendRelatedTo();
+        }
+	   </script>
+    <div id="divMsg" style="display:block">
+		<apex:pageMessages id="msg"/>
+	</div> 
+	
+	<apex:form id="frm">
+        <div class="sidebar" style="width:100%">
+        	
+        	<div id="divCallInfo" class="box"> 
+        		<div class="head">
+					<h1>Save Call Notes</h1>
+				</div>
+				
+        		<div id="callStatus_Cli" class="outgoing" >
+        			<!--<span id="callStatus" style="font-size: 11px;" title="current call status">&nbsp;</span><br />  -->
+        			<span id="cli" title="phone number">&nbsp;</span>
+       			</div>
+       			<!--shumaila CRM Sync v2 JIRA Issue SFC-82 -->
+       			<div id="campName" class="callcampaign" style="font-size: 11px; display:none;" title="SYNETY campaign name">{!campName}</div>
+       			
+        	</div>
+        	
+        	<div id="divCallNotes" class="box" >
+        			
+				<div class="head">
+					<h1>Call Details</h1>
+				</div>
+				<div id="divClickCallContact" style="color: red; font-size: 12px;">
+				
+				</div>
+       			<ul id="accordion">
+       				
+       			</ul>
+       			
+       			<div id="divSelectContact" style="display:none">
+		        	 <select id="lstContactType" name="ContactType" onChange="typeChanged(this);">
+       				 </select>
+		        	<!--Shumaila CRM Sync v2
+		        	<apex:selectList id="lstContactType" size="1" onChange="typeChanged(this);" value="{!callRecordType}">
+		        		<apex:selectOptions value="{!lstCallRecordType}"/>
+		    	         <apex:selectOption itemLabel="Select Record Type..." 
+				            itemValue=""/>
+				            Shumaila JIRA SFC-18 
+		    	        <apex:selectOption itemLabel="Contact" 
+				            itemValue="Contact"/>
+				        <apex:selectOption itemLabel="Account" 
+				            itemValue="Account"/>
+				        <apex:selectOption itemLabel="Lead" 
+				            itemValue="Lead"/>
+				    </apex:selectList>
+				    
+			        <div id="divContact" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow('contact');return false;" value="Add New Contact" /> 
+			        	<span style="font-size:10px">or search Contact</span><br />
+			        	<apex:inputField id="contact" value="{!oCallUpdate.Contact__c}" label="" style="width:92%" />
+			        </div>
+			        <div id="divAccount" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow('account');return false;" value="Add New Account" />
+						<span style="font-size:10px">or search Account</span><br />
+			        	<apex:inputField id="account" value="{!oCallUpdate.Account__c}" label="" style="width:92%" />
+			        </div>
+			        <div id="divLead" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow('lead');return false;" value="Add New Lead" />
+			        	<span style="font-size:10px">or search Lead</span><br />
+			        	<apex:inputField id="lead" value="{!oCallUpdate.Lead__c}" label="" style="width:92%" />
+			        </div>		        
+		          -->
+			        <div id="divSearchRecord" style="display:none">
+			        	<input type="button" class="rtaddbtn" onClick="openNewRecordWindow(SelectType);return false;" value="Add New Record" />
+			        	<span style="font-size:10px">or search</span><br />
+			        	<h7>
+			        	<input id="txtSearchRecord" type="text" name="UnKnown" style="width:160px"  value="" 
+			        		onblur= "getRelatedTo(this);this.oldvalue = txtSearchRecord.value;" 
+			        		onchange= "SetHiddenValue(this);this.oldvalue = txtSearchRecord.value;"/>
+			        	</h7>
+			        	<a href="#" id="recordLookup" onclick="openSearchlookupWindow(SelectType);return false;" 
+			                title="Record Lookup (New Window)" style="text-decoration: none;">
+			                <img src="/s.gif" alt="Record Lookup (New Window)" 
+			                class="lookupIcon" 
+			                onblur="this.className = 'lookupIcon';" 
+			                onfocus="this.className = 'lookupIconOn';" 
+			                onmouseout="this.className = 'lookupIcon';this.className = 'lookupIcon';" 
+			                onmouseover="this.className = 'lookupIconOn';this.className = 'lookupIconOn';" 
+			                title="Record Lookup (New Window)"/>
+			            </a>
+			        	<input type="hidden" id="hiddenSelectId"  value=""/>		       
+			        </div>
+			      </div>
+		        
+		         <!-- Shumaila Related To-->
+       			<div id="divRelatedToPopUp" style="display: none;">
+       				<!--<label for="lstCat">Related To:</label>-->
+			        <select id="ddl_RelatedToPopUp" name="RelatedTo">
+					</select>
+       			</div>
+       			
+       			<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+       			<div id="divCallSubject" style="display: none;">
+       				<!-- <label for="lstCat">Call Subject:</label> -->
+       				<input id="txtCallSubject" type="text" name="CallSubject"  value="{!CustSubject}"  
+       				placeholder= "Call Subject"/>
+       			</div>
+       			<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+       			
+       			<div id="divlstCat" style="display: block;">
+       				<!--<label for="lstCat">Call Category:</label>-->
+       				<apex:selectList id="lstCat" size="1" value="{!selCat}">
+			           <apex:selectOptions value="{!lstCallCatOpt}"/>
+			        </apex:selectList>
+       			</div>
+       			<div>
+       				<div id="divtxtNote" style="display: block;">
+	       				<!--<label for="txtNote">Notes:</label>-->
+	       				<apex:inputTextArea id="txtNote" rows="5" value="{!CallNotes}"
+	       				html-placeholder="Enter Notes"></apex:inputTextArea>
+       				</div>
+       				
+       				<!-- Shumaila CRM Sync v2 JIRA Issue SFC-223 -->
+	       			<div id="divDetailCust1" style="display: none;">
+	       				<!--<div id="divDetailCust1label">&nbsp;</div>-->
+	       				<div id="divDetailCust1DropDown" style="display: none;">
+		       				<apex:selectList id="lsDetailcust1" size="1" value="{!Detailcust1}">
+					           <apex:selectOptions value="{!lstDetailcust1}"/>
+					        </apex:selectList>
+	       				</div>  
+	       				<div id="divDetailCust1SingleText" style="display: none;">
+		       				<input id="txtDetailCust1" type="text" name="DetailCust1" value="{!CallCust1Text}"
+		       				placeholder="{!Detailcust1Label}"/>
+	       				</div>  
+	       				<div id="divDetailCust1MultiText" style="display: none;">
+		       				<apex:inputTextArea id="txtMultiDetailCust1" rows="5" value="{!CallCust1MultiText}"
+		       				html-placeholder="{!Detailcust1Label}">
+	       					</apex:inputTextArea>
+	       				</div>       				
+	       			</div>
+	       			
+	       			<div id="divDetailCust2" style="display: none;">
+	       				<!--<div id="divDetailCust2label">&nbsp;</div>-->
+	       				<div id="divDetailCust2DropDown" style="display: none;">
+	       					<apex:selectList id="lsDetailcust2" size="1" value="{!Detailcust2}">
+					           <apex:selectOptions value="{!lstDetailcust2}"/>
+				        	</apex:selectList>
+	       				</div> 
+						<div id="divDetailCust2SingleText" style="display: none;">
+		       				<input id="txtDetailCust2" type="text" name="DetailCust2" value="{!CallCust2Text}" 
+		       				placeholder="{!Detailcust2Label}"/>
+	       				</div>  
+	       				<div id="divDetailCust2MultiText" style="display: none;">
+		       				<apex:inputTextArea id="txtMultiDetailCust2" rows="5" value="{!CallCust2MultiText}" 
+		       				html-placeholder="{!Detailcust2Label}">
+		       				</apex:inputTextArea>
+	       				</div>        				
+	       			</div>
+	       			
+       				<div class="more">...</div>
+       				<input type="button" value="Save" class="save" title="save call notes" id="cmdSaveNotes" onClick="saveNotes();return false;" />
+       			</div>
+       			<div class="morebox">
+                    <!-- Shumaila for add New Case -->
+                    <input type="button" style="display:none;" value="Save & Create New Case" class="save" id="cmdSaveNote_Case"  title="save call notes and create new case" onClick="saveNotes('create case');return false;" />
+                    
+                    <input type="button" value="Save & Create Followup Task" class="save" id="cmdSaveNote_Task"  title="save call notes and create a followup task" onClick="saveNotes('create task');return false;"  />
+                    <input type="button" value="Save & Create Followup Event" class="save" id="cmdSaveNote_Event"  title="save call notes and create a followup event" onClick="saveNotes('create event');return false;" />	
+                 	       
+                </div>
+                
+        	</div>
+        </div>
+     </apex:form>   
+  
+     
+     <div id="info_box" class="clear"></div>
+	 <div id="info_pop_box"></div>
+	 <div id="divBlockMessage" style="display:none; cursor: default; width: 150px"> 
+        Please wait...
+	 </div>
+		
+		<script>
+				$(".more").bind("click", function(e) {
+    				$(".morebox").slideToggle(100);
+    				e.stopPropagation();
+    			});
+    			
+    			//Shumaila CRM Sync v2
+		        function openSearchlookupWindow(type)
+		        {
+		        	//Shumaila CRM Sync JIRA Issue SFC-44
+		        	var URL = '/apex/'+Prefix+'customLookup?ObjectName='+type;
+		        	var GetSearchString = document.getElementById('txtSearchRecord').value;
+				
+					if(GetSearchString != '')
+						URL += '&GetSearchString='+GetSearchString;
+					
+		        	if(type == 'Select Record Type...')
+		        	{
+		        		alert('Please select a record type');
+		        	}
+		        	else		        	
+		        		window.open(URL,"SearchtWindow","width=800,height=400");
+		        }//***************SFC-44********************
+		</script>
+</apex:page>

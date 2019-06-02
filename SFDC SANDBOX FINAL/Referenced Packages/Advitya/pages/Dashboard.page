@@ -1,0 +1,636 @@
+<apex:page controller="advitya.DashboardController" sidebar="false" standardStylesheets="true" docType="html-5.0" tabStyle="advitya__Dashboard1__tab" readOnly="false">
+   <head> <title>Advitya</title> 
+   <apex:stylesheet value="{!$Resource.advitya__bootstrap_css}"/> 
+   <apex:stylesheet value="{!$Resource.advitya__dashboard_css}"/>
+   </head>
+   <body>
+
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Use to show the pop up when there in no active internet connection -->
+        <!-- The Modal -->
+        <div id="myModalnew" class="modal1">
+            <!-- Modal content -->
+            <div class="modal-content1">
+                <span class="close">&times;</span>
+                 <p>Oops!! your network connection seems to be broken,please check your connection.</p>
+            </div>
+        </div>
+        <!-- Finish Code : Urvashi Shahi -->
+        
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE :Css for No Internet connection Pop up>-->
+       <style>
+            /* The Modal (background) */
+           .modal1 {
+                display: none; /* Hidden by default */
+                position: fixed; /* Stay in place */
+                z-index: 9999999999999999999; /* Sit on top */
+                padding-top: 100px; /* Location of the box */
+                left: 0;
+                top: 0;
+                width: 100%; /* Full width */
+                height: 100%; /* Full height */
+                overflow: auto; /* Enable scroll if needed */
+                background-color: rgb(0,0,0); /* Fallback color */
+                background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            }
+            p {
+                margin: 20px 0 0 0;
+            }
+
+            
+            /* Modal Content */
+            .modal-content1 {
+                   background: #f3f3f3;
+                    margin-top: 12px;
+                    width: 40%;
+                    margin-left: 30%;
+                    padding: 15px 5px;
+                    font-size: 17px;
+                    text-align: center;
+                    border-radius: 5px;
+                    color: #888484;
+                    font-weight: 600;
+                    margin-bottom: -22px;
+                    line-height: 23px;
+            }
+            
+            /* The Close Button */
+            .close {
+                color: #151414;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                opacity: .5;
+                margin-top: -15px;
+            }
+            
+            .close:hover,
+            .close:focus {
+                color: #000;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            .noInternetcon {
+                width: 100%;
+                text-align: center;
+                color:FF0000;
+                text-shadow:1px 1px 1px red;
+                text-transform: uppercase;
+            }
+        </style>
+        <!-- Finish :Urvashi Shahi no internet connection pop up css  -->
+        
+        <!-- Added By :  Urvashi shahi -->
+        <!-- USE : Script use to check active internet connection with frequency of 1 second -->
+        <script>
+            //alert("Onload Script for");
+            var nointernetmodal = document.getElementById('myModalnew');
+             //alert('nointernetmodal >' +nointernetmodal);
+
+            //Get the <span> element that closes the modal
+            var span = document.getElementsByClassName("close")[0];
+            
+            var connectionMessage = "Internet Connected";
+            var noConnectionMessage = "Oops!! your network connection seems to be broken,please check your connection!!";
+            var online = '';
+            window.onload = checkInternetConnection;
+            function checkInternetConnection() {
+                //alert('Start Internet status >>'+status);
+                 isOnLine = navigator.onLine;
+                if (isOnLine) {
+                   // alert(connectionMessage);
+                } 
+                else {
+                    //alert(noConnectionMessage);
+                }
+                var x = setInterval(function()
+                { 
+                    var status = navigator.onLine;
+                    
+                    //alert('Internet status >>'+status);
+                    
+                    if (status) {
+                        nointernetmodal.style.display = "none";
+                        console.log(connectionMessage);
+                        //alert(connectionMessage);
+                    }
+                    else {
+                        nointernetmodal.style.display = "block";
+                        //alert(noConnectionMessage);
+                        console.log(noConnectionMessage);
+                    }
+                }, 1000);
+            }
+            // When the user clicks on <span> (x), close the modal
+            span.onclick = function() {
+                nointernetmodal.style.display = "none";
+            }
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function(event) {
+                if (event.target == nointernetmodal) {
+                    nointernetmodal.style.display = "none";
+                }
+            }
+        </script>
+
+   <script>
+    var intervalID='';
+    $('body').click(function(evt){    
+       if(evt.target.id == "i-img")
+          return;
+    $("#details").hide();
+    });
+    $(function(){
+        var count=0;
+        $(".auditTable").find("tr").each(function(){
+            count++;
+        });
+        if(count==0){
+            var notifyNode="<div id='show-btn' style='display: block;margin-top: 6px;margin-bottom: 20px;'><a href='javascript:void(0);' class='show-more-btn' style='font-weight: 100; text-transform: none; background: #fff; color: #666; font-size:18px;'>No Data</a></div>";
+            $(".auditTable").find("tbody").append(notifyNode);
+            $("#show-mre-btn").hide();
+        }
+    });
+    var d='blah';
+    var records;
+    var record;
+    $(function(){
+        $("#query-loading").show();
+        
+        sforce.connection.sessionId = "{!$Api.Session_ID}";
+        var query="select name from advitya__QueryStorage__c order by createddate desc";
+        var qr = sforce.connection.query(query);
+        records = qr.getArray("records");
+        if(records==null||records==''){
+            var userPrompt="<div style='width: 100%;margin: 0 auto;font-size: 18px;padding-bottom: 20px;padding-top: 20px;text-align: center;color: #666;'>No Data</div>";
+            $("[id*='barPanel']").remove();
+            $("[id*='userTable']").remove();
+            $(".auditHeaderDiv").css("pointer-events","none");
+            $("#orgHealthContainer").find(".auditHeaderDiv").after(userPrompt);
+            $("[id*='recordContainer']").hide();
+            $("#query-loading").hide();
+            $(".popuupBg").hide();
+            return false;
+        }
+        var option="";
+        for(opt in records){
+            option+="<li class='searchListChild' onmouseover='$(\"#txtbox\").val($(this).text());'>"+records[opt]['Name']+"</li>";
+        }
+        $("#opt1").append(option);
+        var query1="select name from advitya__QueryStorage__c order by createddate desc limit 1";
+        var qr1 = sforce.connection.query(query1);
+        record = qr.getArray("records");
+        var x=record[0]['Name'];
+        runSelectedQuery(x.trim());
+        $("#txtbox").val(x);
+        var hideShowMoreBtn='{!hideShowMore}';
+        if(hideShowMoreBtn=="false"){
+            $("#show-more-btn").css("display","block");
+        }
+    });
+    
+    
+    function filterSearches(){
+        var filterResult=[];
+        var searchText=$("#txtbox").val();
+        for(r in records){
+            if(records[r]['Name'].search(new RegExp(searchText,"i"))!=-1){
+                filterResult.push(records[r]);
+            }
+        }
+        var option="";
+        for(opt in filterResult){
+            option+="<li class='searchListChild' onmouseover='$(\"#txtbox\").val($(this).text());'>"+filterResult[opt]['Name']+"</li>";
+        }
+        $(".searchListChild").remove();
+        $("#opt1").append(option);
+        
+        
+    }
+    
+    function runSearch(){
+        $("#txtbox").css("background","#eff0f2");
+        var x=$("#txtbox").val();
+        var flg=0;
+        for(r in record){
+            if(record[r]["Name"]==x)
+                flg=1;
+        }
+        if(flg==0 || x==""){
+            $(".db-error").show();
+            if(x=="")
+                $(".db-error").text("Please enter a value to search!");
+            else
+                $(".db-error").text("There is no saved search with the name '"+x+"'!");
+            $("#txtbox").val("");
+            filterSearches();
+            return false;
+        }
+        $("#query-loading").show();
+        return runSelectedQuery(x);
+    }
+    
+    
+    function checkedRadio(cText){
+        populateQueryDetailPanel(cText);
+        $("#user-name").text(cText);
+        $("#query-loading").show();
+    }
+    
+    $(function(){
+        $(".cdate").each(function(){
+            var dt=$(this).find("span").text();
+            dt=dt.substring(4);
+            var finalDate='';
+            var y=dt.split(' ');
+            for(x in y){
+            if(x==0||x==1||x==y.length-1){
+            if(finalDate=='')
+            finalDate=y[x];
+            else
+            finalDate+='-'+y[x];
+            }
+            }
+            $(this).find("span").text(finalDate);
+        });
+    });
+    
+    function checkForBatchCompletion(){
+        sforce.connection.sessionId = "{!$Api.Session_ID}";
+        var qr = sforce.connection.query("Select Id From advitya__UserSetting__c"); 
+        var records = qr.getArray("records");
+        if(records.length!=0){
+            clearInterval(intervalID);
+            getBatchResults();
+        }
+    }
+    
+     function showSchemaError(){
+         $("#query-loading").hide();
+         $("#step-1-next").removeClass("disable-np-btn");
+         if(window.confirm("Oops! You seem to have modified or deleted object/field(s) from the schema in your Salesforce Org used by this saved search! This saved search can't be user further. Do you want to delete it?")){
+             var queryName=$("#txtbox").val();
+             deleteModifiedSchemaQuery(queryName);
+         }else{
+             try{
+                 var query1="select name from advitya__QueryStorage__c order by createddate desc limit 2";
+                 var qr1 = sforce.connection.query(query1);
+                 var record = qr1.getArray("records");
+                 var x=record[1]['Name'];
+                 runSelectedQuery(x.trim());
+                 $("#txtbox").val(x);
+                 $("#query-loading").show();}
+             catch(e){
+             }
+         }
+     }        
+    </script>
+        <div class="popupBg" id="query-loading" style="display:none;"><img id="loading-img1" src="{!$Resource.LoadingImage}" style="height: 80px; width: 80px; position: fixed; opacity: 1; left: 47%; top: 47%;"/>
+        
+        </div>
+    <apex:form id="frm">
+        <apex:actionFunction action="{!runSelectedQuery}" name="runSelectedQuery" reRender="" oncomplete="if('{!isSchemaChanged}'.length==5){intervalID=setInterval(checkForBatchCompletion,2000);}else{ showSchemaError(); }">
+            <apex:param id="mID" name="query" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction action="{!checkBatchResults}" name="getBatchResults" reRender="userTable,barPanel" oncomplete="runChart('{!countMapSerialized}');">
+        </apex:actionFunction>
+        <apex:actionFunction action="{!populateQueryDetailPanel}" name="populateQueryDetailPanel" reRender="recordContainer" oncomplete="$('#query-loading').hide()">
+            <apex:param id="uname" name="uName" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction action="{!updateAuditBoard}" name="updateAuditBoard" reRender="tbb" oncomplete="formatDate();">
+            <apex:param id="auditSize" name="auditSize" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction name="deleteModifiedSchemaQuery" action="{!deleteModifiedSchemaQuery}" reRender="" oncomplete="alert('The Saved Search has been deleted successfully!'); window.location.reload();">
+            <apex:param name="malformedQuery" value=""/>
+        </apex:actionFunction>
+        <div style="height:8px;"></div>
+        <div class="fluid-container">
+            
+            <div class="more-records-notify">There may be more duplicates present in your org for this saved search. We are not able to show those due to Salesforce limitations!</div>
+            <div class="row" style="margin-top:-5px;">
+            <div id="auditContainer" class="col-md-4 auditDiv">
+                <script>
+                    var size=30;
+                    function updateAudit(){
+                        size=size+30;
+                        updateAuditBoard(size);
+                    }
+                </script>
+                <div class="auditHeaderDiv">Audit Trail</div>
+                <table class="audit-table-header">
+                    <thead>
+                        <tr>
+                            <th style=" width:35%;">Username</th>
+                            <th style="width:25%;">Object</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                </table>
+                <div class="tableDiv">
+                    <apex:outputPanel id="tbb">
+                    <script>
+                    function formatDate(){
+                        $(".cdate").each(function(){
+                            var dt=$(this).find("span").text();
+                            dt=dt.substring(4);
+                            var finalDate='';
+                            var y=dt.split(' ');
+                            for(x in y){
+                                if(x==0||x==1||x==y.length-1){
+                                    if(finalDate=='')
+                                        finalDate=y[x];
+                                    else
+                                        finalDate+='-'+y[x];
+                                }
+                                        
+                            }
+                            $(this).find("span").text(finalDate);
+                        });
+                        var hideShowMoreBtn='{!hideShowMore}';
+                        if(hideShowMoreBtn=="false"){
+                            $("#show-more-btn").show();
+                        }
+                    }
+                   
+                   function getPos(id){
+                   p=$(id).position();
+                   if(p.top==418||p.top>418)
+                       $("#details").css('top',418);
+                   else
+                       $("#details").css('top',p.top);
+                   }
+                   
+                    
+                    </script>
+                    <table class="auditTable">
+                        <tbody>
+                            <apex:repeat value="{!auditList}" var="al">
+                                <tr class="trow" style="height:26px; font-size:12px;">
+                                    <td style="width:36%; overflow:hidden; text-overflow:ellipsis;"><a href="#" style="text-decoration:none !important; color: #222 !important" title="{!al.UserName__c}">{!al.UserName__c}</a></td>
+                                    <td style="width:26%; overflow:hidden; text-overflow:ellipsis;"><a href="#" style="text-decoration:none !important; color: #222 !important" title="{!al.Object__c}">{!al.Object__c}</a></td>
+                                    <td class="cdate"><span style="float:left;">{!al.createddate}</span><img id="i-img" src="{!$Resource.info_icon}" style="width:15px; float:right; margin-right:7px;" onmouseover="$('#details').fadeIn(); var u='{!JSENCODE(HTMLENCODE(al.UserName__c))}'; $('#user').text(decodeURI(u));var o='{!JSENCODE(HTMLENCODE(al.Object__c))}'; $('#obj').text(decodeURI(o));var f='{!JSENCODE(HTMLENCODE(al.Fields__c))}'; $('#fields').text(decodeURI(f));var c='{!al.createddate}'; $('#date').text(decodeURI(c)); getPos(this);"/></td>
+                                </tr>
+                            </apex:repeat>
+                        </tbody>
+                    </table>
+                    <div id="show-more-btn" style="display:none;margin-top: 6px;margin-bottom: 20px;">
+                        <a href="javascript:void(0);" onclick="updateAudit()" class="show-more-btn">Show more</a>
+                    </div>
+                    </apex:outputPanel>
+                </div>
+            </div>
+            
+            
+            <div class="row col-md-8" style="margin-bottom:7px;">
+            <div class="searchFilterWrapper" onclick="$('#details').fadeOut();">
+                <input id="txtbox" type="text" autofocus="false" placeholder="Search here" class="searchFilter" onkeyup="filterSearches();" onclick="$('#opt1').show(); $(this).css('background','#fff');$(this).val(''); $('.db-error').hide();" onblur="$('#opt1').hide();"/>
+                <img src="{!$Resource.search_icon}" style="top: 5px; position: absolute; right: 60%;"/>
+                <a href="javascript:void(0);" class="runButton" onclick="return runSearch();">Go</a>
+                <ul id="opt1" class="searchList">
+                </ul>
+                <div class="db-error col-md-6"></div>
+            </div>      
+            </div>
+            <div id="orgHealthContainer" class="col-md-8 healthDiv" onclick="$('#details').fadeOut();">
+                <div class="auditHeaderDiv" style="width: 101.7%;">Duplicate Count per User
+                    <span style="color:white;float: right;font-size: 12px;text-transform: none;margin-top: 1px;">
+                    <span style="margin-right: 25px;float: left;">
+                        <input id="bar" onclick="toggleTabBar(this.id);" type="radio" style="float: left; margin: 0; margin-top:1px;"/><a href="javascript:void(0);" style="color:#fff !important; text-decoration: none!important;" onclick="toggleTabBar('bar')"> &nbsp;  View Bar Chart</a>
+                  </span>
+                  <span style="float: left;">
+                        <input id="tab" onclick="toggleTabBar(this.id);" type="radio" style="float: left;margin: 0;margin-top:1px;"/><a href="javascript:void(0);" style="color:#fff !important; text-decoration: none!important;" onclick="toggleTabBar('tab')"> &nbsp;  View Table</a>
+                  </span>
+                 </span>
+                </div>
+                <script>
+                    function toggleTabBar(id){
+                        if(id=="bar"){
+                            $("#bar").prop("checked",true);
+                            $("#tab").prop('checked',false);
+                            $("[id*='userTable']").hide();
+                            $("[id*='barPanel']").show();
+                        }
+                        else{
+                            $("#tab").prop("checked",true);
+                            $("#bar").prop('checked',false);
+                            $("[id*='userTable']").show();
+                            $("[id*='barPanel']").hide();
+                        }
+                    }
+                </script>
+                <apex:outputPanel id="barPanel">
+                    <script>
+                        function commonChartData(data,canvasId,xTitle,yTitle){
+                            Chart.defaults.global.legend.display = false;    
+                            var options ={
+                            responsive: true,
+                             animation: false,
+                             maintainAspectRatio:false,
+                             title:{
+                                    display:true,
+                                    fontSize:21,
+                                    
+                                  },
+                              tooltips:{
+                                enabled: true,
+                                bodySpacing: 4,
+                                backgroundColor:"#549cdc"
+                              },
+                                scales: {
+                                    yAxes: [{
+                                    gridLines:{display:false,},
+                                        ticks: {
+                                            min:0,
+                                            beginAtZero:true,
+                                            callback: function(value, index, values) {
+                                                if (Math.floor(value) === value) {
+                                                    return value;
+                                                }
+                                            }
+                                        },
+                                    
+                            scaleLabel: {
+                             display: true,
+                             labelString: yTitle,
+                             fontStyle: "bold",
+                             fontColor: "black",
+                             fontSize:14,
+                             
+                              }
+                            
+                                    }],
+                           xAxes:[{
+                             gridLines:{display:false,},
+                             scaleLabel: {
+                              display: true,
+                              labelString: xTitle,
+                              fontStyle: "bold",
+                              fontColor: "black",
+                              fontSize:14,
+                             },
+                             ticks: {
+                                       autoSkip:false,
+                                       fontColor:"black"                    
+                                    },
+                            
+                             }]
+                                }         
+                            };
+                            var ctx = document.getElementById(canvasId).getContext("2d");    
+                            var barFill = new Chart(ctx, {
+                            type: 'bar',
+                            data: data,
+                            options: options
+                            });
+                        return barFill; 
+                        }
+                        
+                        
+                        
+                        function runChart(d){
+                            var recordsPresent='{!NoRecordsForThisQuery}';
+                            $(".norec").remove();
+                            $("#orgHealthContainer").find(".auditHeaderDiv").css("pointer-events","all");
+                            if(recordsPresent=="true"){
+                                $("[id*='barPanel']").hide();
+                                $("[id*='userTable']").hide();
+                                $("#orgHealthContainer").find(".auditHeaderDiv").css('pointer-events','none');
+                                var userPrompt="<div class='norec' style='width: 100%;margin: 0 auto;font-size: 18px;padding-bottom: 20px;padding-top: 20px;text-align: center;color: #666;'>No Data</div>";
+                                $("#orgHealthContainer").find(".auditHeaderDiv").after(userPrompt);
+                                $("[id*='recordContainer']").hide();
+                                $(".popupBg").hide();
+                                return false;
+                            }
+                            $("[id*='userTable']").hide();
+                            var labelVals=[];
+                            var values=[];
+                            var colors=[];
+                            var z=d.split(',');
+                            var colorScheme=["indianred","blue","green","yellow","orange","skyblue","aqua","brown","cadetblue","greenyellow"];
+                            for(x in z){
+                                z[x]=z[x].replace("{","");
+                                z[x]=z[x].replace("}","");
+                                z[x]=z[x].replace('"','');
+                                z[x]=z[x].replace('"','');
+                                values.push(parseInt(z[x].split(":")[1]));
+                                labelVals.push(z[x].split(":")[0]);
+                                colors.push(colorScheme[x%10]);
+                            }
+                            data = {
+                                labels: labelVals,
+                                datasets: [
+                                    {
+                                        backgroundColor:colors,
+                                        //borderWidth:15,
+                                        data:values
+                                                  
+                                    }
+                                ]
+                            }
+                            
+                         var barChart =commonChartData(data,"showTwelveTopOpportunity","Users","No of Duplicates");
+                         document.getElementById("showTwelveTopOpportunity").onclick =function(e){
+                                var activePoints  = barChart.getElementAtEvent(e);
+                                checkedRadio(activePoints["0"]["_view"]["label"]);
+                         }
+                        checkedRadio("All");
+                        $("#bar").prop('checked',true);
+                        $("#tab").prop('checked',false);
+                        populateQueryDetailPanel("All");
+                        $("[id*='barPanel']").show();
+                        $("#query-loading").hide();  
+                        var mCount='{!masterCount}';
+                        if(mCount=="1999"){
+                            $(".more-records-notify").fadeIn();
+                        }else{
+                            $(".more-records-notify").fadeOut();
+                        }
+                        setTimeout(function(){
+                            $(".more-records-notify").fadeOut();
+                        },4000);
+                    }
+                    </script>
+               <div id="chartContainer" style="width: 878px; height:260px;">
+                   <canvas id="showTwelveTopOpportunity" style="background: rgb(250, 250, 250);"></canvas> 
+               </div>
+      
+                </apex:outputPanel>  
+             
+                <apex:outputPanel id="userTable" style="display:none;">
+                    <table class="recordTable" style="background: #fafafa; width: 101.8%;">
+                    <thead style="width:100% !important">
+                        <tr>
+                            <th>Username</th>
+                            <th>Number of Duplicate Records</th>
+                        </tr>    
+                    </thead>
+                    <tbody style="height:233px;">
+                        <apex:variable var="i" value="{!0}"/>
+                        <apex:repeat value="{!recordsPerUserMap}" var="m">
+                        <apex:variable var="i" value="{!i+1}"/>
+                            <tr id="{!i}">
+                                <td id="u{!i}" style=" padding-left: 5px;"><a href="javascript:void(0);" onclick="checkedRadio($(this).text())" style="text-decoration:underline;" title="{!m}">{!m}</a></td>
+                                <td style=" padding-left: 14px;">{!recordsPerUserMap[m]}</td>
+                            </tr>
+                        </apex:repeat>
+                    </tbody>
+                </table>
+                </apex:outputPanel>
+            </div>
+            
+            
+            <apex:outputPanel id="recordContainer" styleclass="col-md-8 div-wrap" onclick="$('#details').fadeOut();">
+                <div class="inner-value-wrap">
+                    <label class="div-label">Username</label>
+                    <span class="value"><a href="javascript:void(0)" title="{!selectedUsername}">{!selectedUsername}</a></span>
+                </div>
+                <div class="inner-value-wrap">
+                    <label class="div-label">Duplicate Count</label>
+                    <span class="value"><a href="javascript:void(0)" title="{!recordCount}">{!recordCount}</a></span>
+                </div>
+                <div class="inner-value-wrap" style="width:98%;">
+                    <label class="div-label">Criteria</label>
+                    <span class="value"><a href="javascript:void(0)" title="Object-{!queryObject} ; Fields-{!queryCriteria}">Object-{!queryObject} ; Fields-{!queryCriteria}</a></span>
+                </div>
+            </apex:outputPanel>
+            
+            
+    <!-- ############################# AUDIT POP UP ############################## -->        
+           <div class="audit-popup" id="details" style="/* display: none; */">
+                <div style="width: 100%;margin-top: 0;"> 
+                  <span class="popup-header">Details <a href="javascript:void(0);" onclick="$('#details').hide();" style="float: right;color: #fff!important;font-family:cursive;font-weight: 600;">X</a></span>
+                  <div style="float: left;width: 100%;">
+                                    <span class="popuptext popupfields">Username: </span>
+                                    <span class="popuptext popupvalues" id="user">Shubham Mirketa</span>
+                  </div>
+                  <div style="float: left;width: 100%;">
+                                    <span class="popuptext popupfields">Object: </span>
+                                    <span class="popuptext popupvalues" id="obj">Lead</span>
+                  </div>
+                  <div style="float: left;width: 100%;">
+                                    <span class="popuptext popupfields">Criteria: </span>
+                                    <span class="popuptext popupvalues" id="fields">Last Name</span>
+                    
+                  </div>
+                  <div style="float: left;width: 100%;">
+                                    <span class="popuptext popupfields">Timestamp: </span>
+                                    <span class="popuptext popupvalues" id="date">Thu May 04 11:11:30 GMT 2017</span>
+                  </div>
+                </div>
+           </div> 
+<!-- ##########################################################################-->
+         </div>
+    </div>
+    </apex:form>
+     
+    <apex:includeScript value="{!$Resource.advitya__Jquery_min}"/>
+    <apex:includeScript value="/soap/ajax/32.0/connection.js"/>
+    <apex:includeScript value="/soap/ajax/32.0/apex.js"/>
+    <apex:includeScript value="{!$Resource.advitya__canvasjs}"/>
+    <apex:includeScript value="{!$Resource.advitya__chartjs}"/>
+    <apex:includeScript value="{!$Resource.advitya__canvaschartjs}"/>
+    
+    <apex:includeScript value="{!$Resource.advitya__bootstrap_jsmin}"/>
+    </body>
+  </apex:page>

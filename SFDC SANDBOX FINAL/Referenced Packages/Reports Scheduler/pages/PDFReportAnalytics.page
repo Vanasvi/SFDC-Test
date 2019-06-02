@@ -1,0 +1,4 @@
+<apex:page controller="CRMG_RS.PDFReportAnalytics" renderAs="PDF">
+	<apex:pageMessages />
+	<apex:outputText value="{!containt.htmlData}" escape="false"/>
+</apex:page>

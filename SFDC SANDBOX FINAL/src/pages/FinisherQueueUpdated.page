@@ -1,0 +1,21 @@
+<apex:page controller="FinisherQueueController">
+  <apex:pageBlock title="Thank you sir may I have another...">
+      <apex:form >
+          Apps touched today: <b>{!myTodayTouchCount}</b><br/><br/>
+          <apex:commandButton value="Take Finisher 1" action="{!takeApp}"></apex:commandButton>
+          <apex:commandButton value="Take Finisher 2" action="{!takeFinisher2App}"></apex:commandButton>
+          <apex:commandButton value="Take Escalated App" action="{!takeFraudApp}"></apex:commandButton>
+      </apex:form>
+    
+  </apex:pageBlock>
+  
+  <apex:pageBlock title="{!$User.FirstName}'s Apps Worked Today">
+      <apex:pageBlockTable value="{!myTodayTouches}" var="app">
+            <apex:column headervalue="Upstart Name" value="{!app.Upstart__c}" />
+            <apex:column headervalue="Product Status" value="{!app.Status__c}" />
+            <apex:column headervalue="Ops Status" value="{!app.Ops_Status__c}" />
+            <apex:column headervalue="ID" value="{!app.Id}"/>
+        </apex:pageBlockTable>
+  </apex:pageBlock>
+
+</apex:page>

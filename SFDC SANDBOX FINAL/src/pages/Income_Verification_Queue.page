@@ -1,0 +1,21 @@
+<apex:page controller="IncomeVerificationQueue">
+  <apex:pageBlock title="Thank you sir may I have another...">
+
+      Apps Taken Today:<b>{!todayAppsCount}</b><br/><br/>
+      <apex:form >
+          <apex:commandButton value="Take a Starter 1 App" action="{!takeApplication}">
+          </apex:commandButton>
+            <apex:commandButton value="Take A Starter 2 App" action="{!takeApplication2}">
+          </apex:commandButton>
+      </apex:form>
+      
+      
+      <apex:enhancedList height="300" listId="00B39000007tiXs" />
+    </apex:pageBlock>  
+  
+  <apex:pageBlock title="{!$User.FirstName}'s Apps Worked Today">
+        <apex:enhancedList listId="00B70000007tNgZ" height="350"/>
+  </apex:pageBlock>  
+  
+
+</apex:page>

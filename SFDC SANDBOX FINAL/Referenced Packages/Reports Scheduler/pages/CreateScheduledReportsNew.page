@@ -1,0 +1,10 @@
+<apex:page StandardController="CRMG_RS__Scheduled_Report__c" extensions="CRMG_RS.CreateScheduledReportsNew" recordSetVar="scheduledReports" action="{!doLoad}">
+	
+	<apex:pageBlock >
+		<apex:form >
+			<apex:pageMessages />
+			<br/>
+			<apex:commandButton value="Next" action="{!redirectToListPage}" />
+		</apex:form>
+	</apex:pageBlock>
+</apex:page>

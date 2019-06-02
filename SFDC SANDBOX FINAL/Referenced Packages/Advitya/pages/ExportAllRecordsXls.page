@@ -1,0 +1,22 @@
+<apex:page >
+ <!--
+  <table border="1" >         
+             <tr style="font-weight:bold;  ">
+                 <apex:repeat value="{!excelFieldMap}" var="f">
+                 <td>
+                  <font color="Blue" >{!excelFieldMap[f]}</font>
+                 </td>
+                 </apex:repeat>
+             </tr>
+             <apex:repeat value="{!tempList}" var="rec" >
+             <tr>
+             <apex:repeat value="{!excelFieldMap}" var="ff">
+                 <td>
+                    <apex:outputText value="{!rec[ff]}" />
+                 </td>
+             </apex:repeat>
+             </tr> 
+         </apex:repeat>
+     </table>
+     -->
+</apex:page>
